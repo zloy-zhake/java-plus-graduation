@@ -3,11 +3,9 @@ package ru.practicum.explorewithme.stats.client;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.Nullable;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
 
-import java.util.Map;
+import java.net.URI;
 
 public abstract class BaseClient {
     protected final WebClient webClient;
@@ -16,28 +14,13 @@ public abstract class BaseClient {
         this.webClient = webClient;
     }
 
-    protected <T> ResponseEntity<Object> post(String path, T body) {
+    protected <T> ResponseEntity<Object> post(URI uri, T body) {
         return webClient.post()
-                .uri(path)
+                .uri(uri)
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .bodyValue(body)
                 .retrieve()
                 .toEntity(Object.class)
-                .block();
-    }
-
-    protected ResponseEntity<Object> get(String path, @Nullable Map<String, Object> parameters) {
-        return webClient.get()
-                .uri(uriBuilder -> {
-                    uriBuilder.path(path);
-                    if (parameters != null) {
-                        parameters.forEach(uriBuilder::queryParam);
-                    }
-                    return uriBuilder.build();
-                })
-                .retrieve()
-                .toEntity(Object.class)
-                .onErrorResume(e -> Mono.empty()) // Базовая обработка ошибок
                 .block();
     }
 }

@@ -7,6 +7,8 @@ import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.cloud.client.ServiceInstance;
+import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -23,6 +25,9 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class StatsClientTest {
 
@@ -35,13 +40,17 @@ class StatsClientTest {
     void setUp() throws IOException {
         mockWebServer = new MockWebServer();
         mockWebServer.start();
-        String baseUrl = mockWebServer.url("/").toString();
-        if (baseUrl.endsWith("/")) {
-            baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
-        }
-        statsClient = new StatsClient(baseUrl, WebClient.builder());
+
+        ServiceInstance instance = mock(ServiceInstance.class);
+        when(instance.getHost()).thenReturn(mockWebServer.getHostName());
+        when(instance.getPort()).thenReturn(mockWebServer.getPort());
+
+        DiscoveryClient discoveryClient = mock(DiscoveryClient.class);
+        when(discoveryClient.getInstances(anyString())).thenReturn(List.of(instance));
+
+        statsClient = new StatsClient(discoveryClient, "stats-server", WebClient.builder());
         objectMapper = new ObjectMapper();
-        objectMapper.findAndRegisterModules(); // поддержка LocalDateTime
+        objectMapper.findAndRegisterModules();
     }
 
     @AfterEach
@@ -56,20 +65,16 @@ class StatsClientTest {
                 LocalDateTime.of(2025, 5, 5, 12, 0, 0));
         String expectedBody = objectMapper.writeValueAsString(hit);
 
-        // Важно вернуть валидный JSON, иначе WebClient не сможет десериализовать
         mockWebServer.enqueue(new MockResponse()
                 .setResponseCode(201)
-                .setBody("\"Hit saved\"")   // JSON-строка
+                .setBody("\"Hit saved\"")
                 .addHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE));
 
         ResponseEntity<Object> response = statsClient.saveHit(hit);
 
-        // Проверяем HTTP-статус
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        // Тело должно быть десериализовано как строка "Hit saved"
         assertThat(response.getBody()).isEqualTo("Hit saved");
 
-        // Проверяем детали запроса
         RecordedRequest request = mockWebServer.takeRequest();
         assertThat(request.getMethod()).isEqualTo("POST");
         assertThat(request.getPath()).isEqualTo("/hit");
@@ -114,10 +119,9 @@ class StatsClientTest {
         String path = request.getPath();
         assertThat(path).startsWith("/stats?");
 
-        // Проверяем параметры с учётом фактического кодирования
         assertThat(path).contains("start=" + FORMATTER.format(start).replace(" ", "%20"));
         assertThat(path).contains("end=" + FORMATTER.format(end).replace(" ", "%20"));
-        assertThat(path).contains("uris=/events&uris=/events/5"); // без %2F
+        assertThat(path).contains("uris=/events&uris=/events/5");
         assertThat(path).contains("unique=true");
     }
 
@@ -161,7 +165,6 @@ class StatsClientTest {
                 .setResponseCode(404)
                 .addHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE));
 
-        // StatsClient.getStats() не имеет onErrorResume, поэтому ожидаем исключение
         assertThrows(WebClientResponseException.class, () ->
                 statsClient.getStats(LocalDateTime.now(), LocalDateTime.now().plusDays(1), null, null));
     }
@@ -169,7 +172,7 @@ class StatsClientTest {
     @Test
     void saveHit_WhenConnectionRefused_ShouldThrowException() throws IOException {
         EndpointHitDTO hit = new EndpointHitDTO(null, "app", "/uri", "1.1.1.1", LocalDateTime.now());
-            mockWebServer.shutdown();
+        mockWebServer.shutdown();
 
         ResponseEntity<Object> response = statsClient.saveHit(hit);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);

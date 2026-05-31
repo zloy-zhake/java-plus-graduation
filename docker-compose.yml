@@ -1,16 +1,29 @@
 services:
+  discovery-server:
+    build: ./infra/discovery-server
+    container_name: discovery-server
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8761/actuator/health" ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   stats-server:
     build: ./stats/stats-server
     container_name: stat-server
-    ports:
-      - "9090:9090"
     depends_on:
       stat-db:
+        condition: service_healthy
+      discovery-server:
         condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://stat-db:5432/ewm_stats_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: 54321
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
 
   stat-db:
     image: postgres:16.1
@@ -30,16 +43,17 @@ services:
   ewm-service:
     build: ./core/main-service
     container_name: main-service
-    ports:
-      - "8080:8080"
     depends_on:
       main-db:
+        condition: service_healthy
+      discovery-server:
         condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://main-db:5432/ewm_main_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: 54321
-      STATS_SERVICE_URL: http://stat-server:9090
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
 
   main-db:
     image: postgres:16.1

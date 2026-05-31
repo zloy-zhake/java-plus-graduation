@@ -17,4 +17,8 @@ spring:
       mode: embedded
 
 stats-service:
-  url: http://localhost:9090
+  id: stats-server
+
+eureka:
+  client:
+    enabled: false
