@@ -1,0 +1,8 @@
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: ewm-main-service
+          uri: lb://ewm-main-service
+          predicates:
+            - Path=/categories/**, /events/**, /compilations/**, /locations/**, /admin/**, /users/**
