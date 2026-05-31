@@ -1,28 +1,2 @@
-spring:
-  application:
-    name: ewm-main-service
-  datasource:
-    url: jdbc:postgresql://localhost:5433/ewm_main_db
-    username: postgres
-    password: 54321
-    driver-class-name: org.postgresql.Driver
-  sql:
-    init:
-      mode: always
-      continue-on-error: true
-  jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-
 server:
   port: 0
-
-stats-service:
-  id: stats-server
-
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/

@@ -10,18 +10,32 @@ services:
       timeout: 5s
       retries: 20
 
+  config-server:
+    build: ./infra/config-server
+    container_name: config-server
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8888
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+    healthcheck:
+      test: [ "CMD", "curl", "-sf", "http://discovery-server:8761/eureka/apps/CONFIG-SERVER" ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   stats-server:
     build: ./stats/stats-server
     container_name: stat-server
     depends_on:
       stat-db:
         condition: service_healthy
-      discovery-server:
+      config-server:
         condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://stat-db:5432/ewm_stats_db
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: 54321
+      SPRING_PROFILES_ACTIVE: docker
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
 
@@ -46,12 +60,10 @@ services:
     depends_on:
       main-db:
         condition: service_healthy
-      discovery-server:
+      config-server:
         condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://main-db:5432/ewm_main_db
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: 54321
+      SPRING_PROFILES_ACTIVE: docker
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
 

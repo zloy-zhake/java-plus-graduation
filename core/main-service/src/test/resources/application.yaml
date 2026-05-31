@@ -15,6 +15,9 @@ spring:
     init:
       schema-locations: classpath:schema-h2.sql
       mode: embedded
+  cloud:
+    config:
+      enabled: false
 
 stats-service:
   id: stats-server
