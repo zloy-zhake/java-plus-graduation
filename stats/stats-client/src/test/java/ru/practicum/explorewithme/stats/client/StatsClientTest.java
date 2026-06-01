@@ -48,7 +48,7 @@ class StatsClientTest {
         DiscoveryClient discoveryClient = mock(DiscoveryClient.class);
         when(discoveryClient.getInstances(anyString())).thenReturn(List.of(instance));
 
-        statsClient = new StatsClient(discoveryClient, "stats-server", WebClient.builder());
+        statsClient = new StatsClient(discoveryClient, "stats-server", 3, 100L, WebClient.builder());
         objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
     }

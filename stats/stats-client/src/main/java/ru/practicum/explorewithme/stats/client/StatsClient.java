@@ -32,22 +32,24 @@ public class StatsClient extends BaseClient {
     public StatsClient(
             DiscoveryClient discoveryClient,
             @Value("${stats-service.id:stats-server}") String statsServiceId,
+            @Value("${stats-service.retry.max-attempts:3}") int maxAttempts,
+            @Value("${stats-service.retry.back-off-period:3000}") long backOffPeriod,
             WebClient.Builder builder) {
         super(builder.build());
         this.discoveryClient = discoveryClient;
         this.statsServiceId = statsServiceId;
-        this.retryTemplate = buildRetryTemplate();
+        this.retryTemplate = buildRetryTemplate(maxAttempts, backOffPeriod);
     }
 
-    private RetryTemplate buildRetryTemplate() {
+    private RetryTemplate buildRetryTemplate(int maxAttempts, long backOffPeriod) {
         RetryTemplate template = new RetryTemplate();
 
         FixedBackOffPolicy backOffPolicy = new FixedBackOffPolicy();
-        backOffPolicy.setBackOffPeriod(3000L);
+        backOffPolicy.setBackOffPeriod(backOffPeriod);
         template.setBackOffPolicy(backOffPolicy);
 
         MaxAttemptsRetryPolicy retryPolicy = new MaxAttemptsRetryPolicy();
-        retryPolicy.setMaxAttempts(3);
+        retryPolicy.setMaxAttempts(maxAttempts);
         template.setRetryPolicy(retryPolicy);
 
         return template;

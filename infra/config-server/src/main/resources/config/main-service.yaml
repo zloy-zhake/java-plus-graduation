@@ -16,3 +16,6 @@ spring:
 
 stats-service:
   id: stats-server
+  retry:
+    max-attempts: 3
+    back-off-period: 3000
