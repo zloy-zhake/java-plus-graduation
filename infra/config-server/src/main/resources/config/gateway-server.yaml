@@ -2,10 +2,10 @@ spring:
   cloud:
     gateway:
       routes:
-        - id: main-service
+        - id: ewm-service
           uri: lb://main-service
           predicates:
-            - Path=/categories/**, /events/**, /compilations/**, /locations/**, /admin/**, /users/**
+            - Path=/**
     loadbalancer:
       cache:
         enabled: false
