@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: ewm-main-service
+  datasource:
+    url: jdbc:h2:mem:ewm-test-db
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+  sql:
+    init:
+      schema-locations: classpath:schema-h2.sql
+      mode: embedded
+  cloud:
+    config:
+      enabled: false
+
+stats-service:
+  id: stats-server
+
+eureka:
+  client:
+    enabled: false
