@@ -20,12 +20,9 @@ import ru.practicum.explorewithme.service.event.enums.EventState;
 import ru.practicum.explorewithme.service.event.model.Event;
 import ru.practicum.explorewithme.service.event.model.Location;
 import ru.practicum.explorewithme.service.exception.ConflictException;
-import ru.practicum.explorewithme.service.request.dal.EventRequestRepository;
-import ru.practicum.explorewithme.service.request.enums.ParticipationRequestStatus;
 import ru.practicum.explorewithme.service.user.model.User;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,8 +38,6 @@ class EventServiceImplAdminTest {
     private EventRepository eventRepository;
     @Mock
     private CategoryRepository categoryRepository;
-    @Mock
-    private EventRequestRepository requestRepository;
 
     @InjectMocks
     private EventServiceImpl eventService;
@@ -75,12 +70,13 @@ class EventServiceImplAdminTest {
     void getEventsByAdmin_Success() {
         when(eventRepository.findAll(any(BooleanExpression.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(event)));
-        when(requestRepository.countConfirmedRequestsByEventIds(anyList())).thenReturn(Collections.emptyList());
 
         EventSearchParamsAdmin params = new EventSearchParamsAdmin(null, null, null, null, null, 0, 10);
         List<EventFullDto> result = eventService.getEventsByAdmin(params);
 
         assertThat(result).hasSize(1);
+        // confirmedRequests = 0 (заглушка до ШАГ 9)
+        assertThat(result.get(0).getConfirmedRequests()).isEqualTo(0L);
         verify(eventRepository).findAll(any(BooleanExpression.class), any(Pageable.class));
     }
 
@@ -88,7 +84,6 @@ class EventServiceImplAdminTest {
     void updateEventByAdmin_Publish_Success() {
         when(eventRepository.findById(1L)).thenReturn(Optional.of(event));
         when(eventRepository.save(any())).thenReturn(event);
-        when(requestRepository.countByEventIdAndStatus(anyLong(), any(ParticipationRequestStatus.class))).thenReturn(0);
 
         UpdateEventAdminRequest request = UpdateEventAdminRequest.builder()
                 .stateAction(AdminEventStateAction.PUBLISH_EVENT)
@@ -98,11 +93,13 @@ class EventServiceImplAdminTest {
 
         assertThat(result.getState()).isEqualTo(EventState.PUBLISHED);
         assertThat(event.getPublishedOn()).isNotNull();
+        // confirmedRequests = 0 (заглушка до ШАГ 9)
+        assertThat(result.getConfirmedRequests()).isEqualTo(0L);
     }
 
     @Test
     void updateEventByAdmin_Publish_TooLate_ShouldThrowConflict() {
-        event.setEventDate(LocalDateTime.now().plusMinutes(30)); // Less than 1 hour
+        event.setEventDate(LocalDateTime.now().plusMinutes(30));
         when(eventRepository.findById(1L)).thenReturn(Optional.of(event));
 
         UpdateEventAdminRequest request = UpdateEventAdminRequest.builder()
@@ -131,7 +128,6 @@ class EventServiceImplAdminTest {
     void updateEventByAdmin_Reject_Success() {
         when(eventRepository.findById(1L)).thenReturn(Optional.of(event));
         when(eventRepository.save(any())).thenReturn(event);
-        when(requestRepository.countByEventIdAndStatus(anyLong(), any(ParticipationRequestStatus.class))).thenReturn(0);
 
         UpdateEventAdminRequest request = UpdateEventAdminRequest.builder()
                 .stateAction(AdminEventStateAction.REJECT_EVENT)
@@ -140,6 +136,8 @@ class EventServiceImplAdminTest {
         EventFullDto result = eventService.updateEventByAdmin(1L, request);
 
         assertThat(result.getState()).isEqualTo(EventState.CANCELED);
+        // confirmedRequests = 0 (заглушка до ШАГ 9)
+        assertThat(result.getConfirmedRequests()).isEqualTo(0L);
     }
 
     @Test

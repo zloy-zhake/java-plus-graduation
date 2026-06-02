@@ -22,8 +22,6 @@ import ru.practicum.explorewithme.service.exception.BadRequestException;
 import ru.practicum.explorewithme.service.exception.ConflictException;
 import ru.practicum.explorewithme.service.exception.NotFoundException;
 import ru.practicum.explorewithme.service.location.dal.LocationRepository;
-import ru.practicum.explorewithme.service.request.dal.EventRequestRepository;
-import ru.practicum.explorewithme.service.request.enums.ParticipationRequestStatus;
 import ru.practicum.explorewithme.service.user.dal.UserRepository;
 import ru.practicum.explorewithme.service.user.model.User;
 import ru.practicum.explorewithme.stats.client.StatsClient;
@@ -49,8 +47,6 @@ class EventServiceImplTest {
     private UserRepository userRepository;
     @Mock
     private CategoryRepository categoryRepository;
-    @Mock
-    private EventRequestRepository requestRepository;
     @Mock
     private StatsClient statsClient;
     @Mock
@@ -80,8 +76,8 @@ class EventServiceImplTest {
                 .title("Valid title")
                 .build();
         event = new Event();
-        event.setCategory(category);               // <-- установить тестовую категорию
-        event.setInitiator(user);                  // <-- и инициатора (для маппера)
+        event.setCategory(category);
+        event.setInitiator(user);
         event.setAnnotation("Valid annotation for testing");
         event.setDescription("Valid description for testing");
         event.setEventDate(LocalDateTime.parse("2030-12-31T15:10:05"));
@@ -131,7 +127,6 @@ class EventServiceImplTest {
         Pageable pageable = PageRequest.of(0, 10, Sort.by("id").ascending());
         when(eventRepository.findAllByInitiatorId(1L, pageable))
                 .thenReturn(new PageImpl<>(List.of(event)));
-        when(requestRepository.countConfirmedRequestsByEventIds(anyList())).thenReturn(Collections.emptyList());
 
         List<EventShortDto> result = eventService.getEvents(1L, 0, 10);
         assertThat(result).hasSize(1);
@@ -141,16 +136,16 @@ class EventServiceImplTest {
     void getEvent_ShouldReturnFullDto() {
         Event event = createEventWithDefaults();
         when(eventRepository.findByIdAndInitiatorId(1L, 1L)).thenReturn(Optional.of(event));
-        when(requestRepository.countByEventIdAndStatus(anyLong(), any(ParticipationRequestStatus.class))).thenReturn(0);
 
         EventFullDto result = eventService.getEvent(1L, 1L);
         assertThat(result.getId()).isEqualTo(event.getId());
+        // confirmedRequests = 0 (заглушка до ШАГ 9)
+        assertThat(result.getConfirmedRequests()).isEqualTo(0L);
     }
-
 
     @Test
     void getEvent_NotFound_ShouldThrowNotFound() {
-        when(eventRepository.findByIdAndInitiatorId(999L, 1L)).thenReturn(Optional.empty());  // eventId=999, userId=1
+        when(eventRepository.findByIdAndInitiatorId(999L, 1L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> eventService.getEvent(1L, 999L))
                 .isInstanceOf(NotFoundException.class);
     }
@@ -165,7 +160,6 @@ class EventServiceImplTest {
                 .stateAction(UserEventStateAction.CANCEL_REVIEW)
                 .build();
         when(eventRepository.save(any())).thenReturn(event);
-        when(requestRepository.countByEventIdAndStatus(anyLong(), any(ParticipationRequestStatus.class))).thenReturn(0);
 
         EventFullDto result = eventService.updateEvent(1L, 1L, request);
         assertThat(result.getState()).isEqualTo(EventState.CANCELED);
@@ -202,7 +196,6 @@ class EventServiceImplTest {
 
     @Test
     void shouldReturnEvents() {
-
         EventSearchParams params = EventSearchParams.builder()
                 .from(0)
                 .size(10)
@@ -228,7 +221,6 @@ class EventServiceImplTest {
         event.setState(EventState.PUBLISHED);
 
         Page<Event> page = new PageImpl<>(List.of(event));
-
         when(eventRepository.findAll(any(BooleanExpression.class), any(Pageable.class))).thenReturn(page);
 
         List<EventShortDto> result = eventService.getEventsPublic(params);
@@ -239,7 +231,6 @@ class EventServiceImplTest {
 
     @Test
     void shouldReturnEventById() {
-
         Category category = new Category();
         category.setId(1L);
         category.setName("Category Name");
@@ -261,19 +252,15 @@ class EventServiceImplTest {
         event.setLocation(location);
         event.setEventDate(LocalDateTime.now().plusDays(1));
 
-        when(eventRepository.findById(1L))
-                .thenReturn(Optional.of(event));
-
-        when(statsClient.getStats(any(), any(), any(), any()))
-                .thenReturn(ResponseEntity.ok(List.of()));
-
-        when(requestRepository.countByEventIdAndStatus(anyLong(), any()))
-                .thenReturn(0);
+        when(eventRepository.findById(1L)).thenReturn(Optional.of(event));
+        when(statsClient.getStats(any(), any(), any(), any())).thenReturn(ResponseEntity.ok(List.of()));
 
         EventFullDto dto = eventService.getEventPublic(1L);
 
         assertNotNull(dto);
         assertEquals(1L, dto.getId());
+        // confirmedRequests = 0 (заглушка до ШАГ 9)
+        assertEquals(0L, dto.getConfirmedRequests());
         verify(eventRepository).findById(1L);
     }
 
@@ -288,7 +275,6 @@ class EventServiceImplTest {
         e.setId(10L);
         Page<Event> page = new PageImpl<>(List.of(e));
         when(eventRepository.findEventsByLocation(eq(1L), any(Pageable.class))).thenReturn(page);
-        when(requestRepository.countConfirmedRequestsByEventIds(anyList())).thenReturn(Collections.emptyList());
         when(statsClient.getStats(any(), any(), any(), any())).thenReturn(ResponseEntity.ok(List.of()));
 
         List<EventFullDto> result = eventService.getEventsByLocation(1L, 0, 10);
@@ -334,7 +320,6 @@ class EventServiceImplTest {
 
         eventService.getEventsByLocation(1L, 20, 10);
 
-        verify(eventRepository).findEventsByLocation(eq(1L),
-                eq(PageRequest.of(2, 10)));
+        verify(eventRepository).findEventsByLocation(eq(1L), eq(PageRequest.of(2, 10)));
     }
 }
