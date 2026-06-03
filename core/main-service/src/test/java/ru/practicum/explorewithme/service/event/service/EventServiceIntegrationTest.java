@@ -4,7 +4,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.explorewithme.service.event.client.UserClient;
+import ru.practicum.explorewithme.service.user.dto.UserShortDto;
+
+import java.util.stream.Collectors;
+
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.when;
 import ru.practicum.explorewithme.service.category.dto.CategoryDto;
 import ru.practicum.explorewithme.service.category.dto.NewCategoryRequest;
 import ru.practicum.explorewithme.service.category.service.CategoryService;
@@ -33,14 +43,26 @@ class EventServiceIntegrationTest {
     @Autowired
     private CategoryService categoryService;
 
+    @MockBean
+    private UserClient eventUserClient;
+
     private final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private Long categoryId;
 
     @BeforeEach
-    void createCategory() {
+    void setUp() {
         CategoryDto cat = categoryService.createCategory(new NewCategoryRequest("Тестовая категория"));
         categoryId = cat.getId();
+        lenient().when(eventUserClient.getUserById(anyLong()))
+                .thenAnswer(inv -> new UserShortDto(inv.<Long>getArgument(0), "Test User"));
+        lenient().when(eventUserClient.getUsersByIds(anyList()))
+                .thenAnswer(inv -> {
+                    java.util.List<Long> ids = inv.getArgument(0);
+                    return ids.stream()
+                            .map(id -> new UserShortDto(id, "Test User"))
+                            .collect(Collectors.toList());
+                });
     }
 
     @Test

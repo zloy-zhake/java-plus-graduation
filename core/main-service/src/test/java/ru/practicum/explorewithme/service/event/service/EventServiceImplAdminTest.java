@@ -11,6 +11,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import ru.practicum.explorewithme.service.category.dal.CategoryRepository;
 import ru.practicum.explorewithme.service.category.model.Category;
+import ru.practicum.explorewithme.service.event.client.UserClient;
 import ru.practicum.explorewithme.service.event.dal.EventRepository;
 import ru.practicum.explorewithme.service.event.dto.EventFullDto;
 import ru.practicum.explorewithme.service.event.dto.EventSearchParamsAdmin;
@@ -21,8 +22,7 @@ import ru.practicum.explorewithme.service.event.model.Event;
 import ru.practicum.explorewithme.service.event.model.Location;
 import ru.practicum.explorewithme.service.exception.ConflictException;
 import ru.practicum.explorewithme.service.location.dal.LocationRepository;
-import ru.practicum.explorewithme.service.user.dal.UserRepository;
-import ru.practicum.explorewithme.service.user.model.User;
+import ru.practicum.explorewithme.service.user.dto.UserShortDto;
 import ru.practicum.explorewithme.stats.client.StatsClient;
 
 import java.time.LocalDateTime;
@@ -32,6 +32,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,7 +41,7 @@ class EventServiceImplAdminTest {
     @Mock
     private EventRepository eventRepository;
     @Mock
-    private UserRepository userRepository;
+    private UserClient userClient;
     @Mock
     private CategoryRepository categoryRepository;
     @Mock
@@ -53,15 +54,15 @@ class EventServiceImplAdminTest {
 
     private Event event;
     private Category category;
-    private User user;
+    private UserShortDto userShortDto;
 
     @BeforeEach
     void setUp() {
-        user = new User(1L, "user@example.com", "User");
+        userShortDto = new UserShortDto(1L, "User");
         category = new Category(1L, "Category");
         event = new Event();
         event.setId(1L);
-        event.setInitiatorId(user.getId());
+        event.setInitiatorId(userShortDto.getId());
         event.setCategory(category);
         event.setState(EventState.PENDING);
         event.setEventDate(LocalDateTime.now().plusDays(1));
@@ -79,6 +80,7 @@ class EventServiceImplAdminTest {
     void getEventsByAdmin_Success() {
         when(eventRepository.findAll(any(BooleanExpression.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(event)));
+        when(userClient.getUsersByIds(anyList())).thenReturn(List.of(userShortDto));
 
         EventSearchParamsAdmin params = new EventSearchParamsAdmin(null, null, null, null, null, 0, 10);
         List<EventFullDto> result = eventService.getEventsByAdmin(params);
@@ -93,6 +95,7 @@ class EventServiceImplAdminTest {
     void updateEventByAdmin_Publish_Success() {
         when(eventRepository.findById(1L)).thenReturn(Optional.of(event));
         when(eventRepository.save(any())).thenReturn(event);
+        when(userClient.getUserById(1L)).thenReturn(userShortDto);
 
         UpdateEventAdminRequest request = UpdateEventAdminRequest.builder()
                 .stateAction(AdminEventStateAction.PUBLISH_EVENT)
@@ -137,6 +140,7 @@ class EventServiceImplAdminTest {
     void updateEventByAdmin_Reject_Success() {
         when(eventRepository.findById(1L)).thenReturn(Optional.of(event));
         when(eventRepository.save(any())).thenReturn(event);
+        when(userClient.getUserById(1L)).thenReturn(userShortDto);
 
         UpdateEventAdminRequest request = UpdateEventAdminRequest.builder()
                 .stateAction(AdminEventStateAction.REJECT_EVENT)

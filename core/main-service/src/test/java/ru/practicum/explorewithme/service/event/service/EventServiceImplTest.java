@@ -11,6 +11,7 @@ import org.springframework.data.domain.*;
 import org.springframework.http.ResponseEntity;
 import ru.practicum.explorewithme.service.category.dal.CategoryRepository;
 import ru.practicum.explorewithme.service.category.model.Category;
+import ru.practicum.explorewithme.service.event.client.UserClient;
 import ru.practicum.explorewithme.service.event.dal.EventRepository;
 import ru.practicum.explorewithme.service.event.dto.*;
 import ru.practicum.explorewithme.service.event.enums.EventState;
@@ -22,8 +23,7 @@ import ru.practicum.explorewithme.service.exception.BadRequestException;
 import ru.practicum.explorewithme.service.exception.ConflictException;
 import ru.practicum.explorewithme.service.exception.NotFoundException;
 import ru.practicum.explorewithme.service.location.dal.LocationRepository;
-import ru.practicum.explorewithme.service.user.dal.UserRepository;
-import ru.practicum.explorewithme.service.user.model.User;
+import ru.practicum.explorewithme.service.user.dto.UserShortDto;
 import ru.practicum.explorewithme.stats.client.StatsClient;
 
 import java.time.LocalDateTime;
@@ -44,7 +44,7 @@ class EventServiceImplTest {
     @Mock
     private EventRepository eventRepository;
     @Mock
-    private UserRepository userRepository;
+    private UserClient userClient;
     @Mock
     private CategoryRepository categoryRepository;
     @Mock
@@ -55,14 +55,14 @@ class EventServiceImplTest {
     @InjectMocks
     private EventServiceImpl eventService;
 
-    private User user;
+    private UserShortDto userShortDto;
     private Category category;
     private NewEventDto newEventDto;
     private Event event;
 
     @BeforeEach
     void setUp() {
-        user = new User(1L, "user@example.com", "User");
+        userShortDto = new UserShortDto(1L, "User");
         category = new Category(1L, "Концерты");
         newEventDto = NewEventDto.builder()
                 .annotation("Valid annotation for testing")
@@ -77,7 +77,7 @@ class EventServiceImplTest {
                 .build();
         event = new Event();
         event.setCategory(category);
-        event.setInitiatorId(user.getId());
+        event.setInitiatorId(userShortDto.getId());
         event.setAnnotation("Valid annotation for testing");
         event.setDescription("Valid description for testing");
         event.setEventDate(LocalDateTime.parse("2030-12-31T15:10:05"));
@@ -90,11 +90,11 @@ class EventServiceImplTest {
 
     @Test
     void addEvent_Success() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userClient.getUserById(1L)).thenReturn(userShortDto);
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
         Event savedEvent = EventMapper.toEntity(newEventDto);
         savedEvent.setId(1L);
-        savedEvent.setInitiatorId(user.getId());
+        savedEvent.setInitiatorId(userShortDto.getId());
         savedEvent.setCategory(category);
         when(eventRepository.save(any(Event.class))).thenReturn(savedEvent);
 
@@ -116,7 +116,7 @@ class EventServiceImplTest {
 
     @Test
     void addEvent_UserNotFound_ShouldThrowNotFound() {
-        when(userRepository.findById(anyLong())).thenReturn(Optional.empty());
+        when(userClient.getUserById(anyLong())).thenThrow(new NotFoundException("Пользователь не найден"));
 
         assertThatThrownBy(() -> eventService.addEvent(99L, newEventDto))
                 .isInstanceOf(NotFoundException.class);
@@ -127,6 +127,7 @@ class EventServiceImplTest {
         Pageable pageable = PageRequest.of(0, 10, Sort.by("id").ascending());
         when(eventRepository.findAllByInitiatorId(1L, pageable))
                 .thenReturn(new PageImpl<>(List.of(event)));
+        when(userClient.getUsersByIds(anyList())).thenReturn(List.of(userShortDto));
 
         List<EventShortDto> result = eventService.getEvents(1L, 0, 10);
         assertThat(result).hasSize(1);
@@ -136,6 +137,7 @@ class EventServiceImplTest {
     void getEvent_ShouldReturnFullDto() {
         Event event = createEventWithDefaults();
         when(eventRepository.findByIdAndInitiatorId(1L, 1L)).thenReturn(Optional.of(event));
+        when(userClient.getUserById(1L)).thenReturn(userShortDto);
 
         EventFullDto result = eventService.getEvent(1L, 1L);
         assertThat(result.getId()).isEqualTo(event.getId());
@@ -155,6 +157,7 @@ class EventServiceImplTest {
         Event event = createEventWithDefaults();
         event.setState(EventState.PENDING);
         when(eventRepository.findByIdAndInitiatorId(1L, 1L)).thenReturn(Optional.of(event));
+        when(userClient.getUserById(1L)).thenReturn(userShortDto);
 
         UpdateEventUserRequest request = UpdateEventUserRequest.builder()
                 .stateAction(UserEventStateAction.CANCEL_REVIEW)
@@ -180,7 +183,7 @@ class EventServiceImplTest {
         Event event = new Event();
         event.setId(1L);
         event.setCategory(category);
-        event.setInitiatorId(user.getId());
+        event.setInitiatorId(userShortDto.getId());
         event.setAnnotation("annotation");
         event.setDescription("description");
         event.setEventDate(LocalDateTime.now().plusDays(1));
@@ -206,22 +209,19 @@ class EventServiceImplTest {
         category.setId(1L);
         category.setName("Тестовая категория");
 
-        User initiator = new User();
-        initiator.setId(10L);
-        initiator.setName("Организатор");
-
         Event event = new Event();
         event.setId(1L);
         event.setAnnotation("Краткое описание события");
         event.setTitle("Заголовок");
         event.setCategory(category);
-        event.setInitiatorId(initiator.getId());
+        event.setInitiatorId(10L);
         event.setEventDate(LocalDateTime.now().plusDays(1));
         event.setPaid(true);
         event.setState(EventState.PUBLISHED);
 
         Page<Event> page = new PageImpl<>(List.of(event));
         when(eventRepository.findAll(any(BooleanExpression.class), any(Pageable.class))).thenReturn(page);
+        when(userClient.getUsersByIds(anyList())).thenReturn(List.of(new UserShortDto(10L, "Организатор")));
 
         List<EventShortDto> result = eventService.getEventsPublic(params);
 
@@ -235,10 +235,6 @@ class EventServiceImplTest {
         category.setId(1L);
         category.setName("Category Name");
 
-        User initiator = new User();
-        initiator.setId(1L);
-        initiator.setName("Initiator Name");
-
         Location location = new Location();
         location.setLat(55.75f);
         location.setLon(37.62f);
@@ -247,13 +243,14 @@ class EventServiceImplTest {
         event.setId(1L);
         event.setState(EventState.PUBLISHED);
         event.setCategory(category);
-        event.setInitiatorId(initiator.getId());
+        event.setInitiatorId(1L);
         event.setCreatedOn(LocalDateTime.now());
         event.setLocation(location);
         event.setEventDate(LocalDateTime.now().plusDays(1));
 
         when(eventRepository.findById(1L)).thenReturn(Optional.of(event));
         when(statsClient.getStats(any(), any(), any(), any())).thenReturn(ResponseEntity.ok(List.of()));
+        when(userClient.getUserById(1L)).thenReturn(new UserShortDto(1L, "Initiator Name"));
 
         EventFullDto dto = eventService.getEventPublic(1L);
 
@@ -276,6 +273,7 @@ class EventServiceImplTest {
         Page<Event> page = new PageImpl<>(List.of(e));
         when(eventRepository.findEventsByLocation(eq(1L), any(Pageable.class))).thenReturn(page);
         when(statsClient.getStats(any(), any(), any(), any())).thenReturn(ResponseEntity.ok(List.of()));
+        when(userClient.getUsersByIds(anyList())).thenReturn(List.of(userShortDto));
 
         List<EventFullDto> result = eventService.getEventsByLocation(1L, 0, 10);
 

@@ -19,3 +19,7 @@ stats-service:
   retry:
     max-attempts: 3
     back-off-period: 3000
+
+feign:
+  circuitbreaker:
+    enabled: true
