@@ -53,7 +53,7 @@ class EventRequestRepositoryTest {
         event.setRequestModeration(true);
         event.setState(EventState.PUBLISHED);
         event.setCreatedOn(LocalDateTime.now());
-        event.setInitiator(initiator);
+        event.setInitiatorId(initiator.getId());
         event.setCategory(category);
         em.persist(event);
     }
@@ -84,7 +84,7 @@ class EventRequestRepositoryTest {
         ParticipationRequest req = new ParticipationRequest();
         req.setCreated(LocalDateTime.now());
         req.setEvent(event);
-        req.setRequester(requester);
+        req.setRequesterId(requester.getId());
         req.setStatus(status);
         em.persist(req);
     }

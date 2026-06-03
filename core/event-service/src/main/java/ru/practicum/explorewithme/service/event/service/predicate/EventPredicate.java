@@ -42,7 +42,7 @@ public class EventPredicate {
         BooleanExpression predicate = event.isNotNull();
 
         if (params.getUsers() != null && !params.getUsers().isEmpty()) {
-            predicate = predicate.and(event.initiator.id.in(params.getUsers()));
+            predicate = predicate.and(event.initiatorId.in(params.getUsers()));
         }
 
         if (params.getStates() != null && !params.getStates().isEmpty()) {

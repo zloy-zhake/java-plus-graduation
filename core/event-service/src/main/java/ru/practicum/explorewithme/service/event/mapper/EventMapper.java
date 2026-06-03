@@ -27,7 +27,7 @@ public final class EventMapper {
         return event;
     }
 
-    public static EventFullDto toFullDto(Event event, Long confirmedRequests, Long views) {
+    public static EventFullDto toFullDto(Event event, UserShortDto initiator, Long confirmedRequests, Long views) {
         return EventFullDto.builder()
                 .id(event.getId())
                 .annotation(event.getAnnotation())
@@ -36,7 +36,7 @@ public final class EventMapper {
                 .createdOn(event.getCreatedOn().format(FORMATTER))
                 .description(event.getDescription())
                 .eventDate(event.getEventDate().format(FORMATTER))
-                .initiator(new UserShortDto(event.getInitiator().getId(), event.getInitiator().getName()))
+                .initiator(initiator)
                 .location(new LocationDto(event.getLocation().getLat(), event.getLocation().getLon()))
                 .paid(event.getPaid())
                 .participantLimit(event.getParticipantLimit())
@@ -48,26 +48,18 @@ public final class EventMapper {
                 .build();
     }
 
-    public static EventFullDto toFullDto(Event event) {
-        return toFullDto(event, 0L, 0L);
-    }
-
-    public static EventShortDto toShortDto(Event event, Long confirmedRequests, Long views) {
+    public static EventShortDto toShortDto(Event event, UserShortDto initiator, Long confirmedRequests, Long views) {
         return EventShortDto.builder()
                 .id(event.getId())
                 .annotation(event.getAnnotation())
                 .category(new CategoryDto(event.getCategory().getId(), event.getCategory().getName()))
                 .confirmedRequests(confirmedRequests != null ? confirmedRequests : 0L)
                 .eventDate(event.getEventDate().format(FORMATTER))
-                .initiator(new UserShortDto(event.getInitiator().getId(), event.getInitiator().getName()))
+                .initiator(initiator)
                 .paid(event.getPaid())
                 .title(event.getTitle())
                 .views(views != null ? views : 0L)
                 .build();
-    }
-
-    public static EventShortDto toShortDto(Event event) {
-        return toShortDto(event, 0L, 0L);
     }
 
     public static void updateEntityFromRequest(UpdateEventUserRequest request, Event event) {

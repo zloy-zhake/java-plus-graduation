@@ -77,7 +77,7 @@ class EventServiceImplTest {
                 .build();
         event = new Event();
         event.setCategory(category);
-        event.setInitiator(user);
+        event.setInitiatorId(user.getId());
         event.setAnnotation("Valid annotation for testing");
         event.setDescription("Valid description for testing");
         event.setEventDate(LocalDateTime.parse("2030-12-31T15:10:05"));
@@ -94,7 +94,7 @@ class EventServiceImplTest {
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
         Event savedEvent = EventMapper.toEntity(newEventDto);
         savedEvent.setId(1L);
-        savedEvent.setInitiator(user);
+        savedEvent.setInitiatorId(user.getId());
         savedEvent.setCategory(category);
         when(eventRepository.save(any(Event.class))).thenReturn(savedEvent);
 
@@ -180,7 +180,7 @@ class EventServiceImplTest {
         Event event = new Event();
         event.setId(1L);
         event.setCategory(category);
-        event.setInitiator(user);
+        event.setInitiatorId(user.getId());
         event.setAnnotation("annotation");
         event.setDescription("description");
         event.setEventDate(LocalDateTime.now().plusDays(1));
@@ -215,7 +215,7 @@ class EventServiceImplTest {
         event.setAnnotation("Краткое описание события");
         event.setTitle("Заголовок");
         event.setCategory(category);
-        event.setInitiator(initiator);
+        event.setInitiatorId(initiator.getId());
         event.setEventDate(LocalDateTime.now().plusDays(1));
         event.setPaid(true);
         event.setState(EventState.PUBLISHED);
@@ -247,7 +247,7 @@ class EventServiceImplTest {
         event.setId(1L);
         event.setState(EventState.PUBLISHED);
         event.setCategory(category);
-        event.setInitiator(initiator);
+        event.setInitiatorId(initiator.getId());
         event.setCreatedOn(LocalDateTime.now());
         event.setLocation(location);
         event.setEventDate(LocalDateTime.now().plusDays(1));

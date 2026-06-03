@@ -72,7 +72,7 @@ class EventRepositoryTest {
         e.setRequestModeration(true);
         e.setState(EventState.PENDING);
         e.setCreatedOn(LocalDateTime.now());
-        e.setInitiator(user);
+        e.setInitiatorId(user.getId());
         e.setCategory(cat);
         return em.persist(e);
     }

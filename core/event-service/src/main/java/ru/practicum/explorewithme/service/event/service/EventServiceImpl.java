@@ -24,6 +24,9 @@ import ru.practicum.explorewithme.service.exception.ConflictException;
 import ru.practicum.explorewithme.service.exception.NotFoundException;
 import ru.practicum.explorewithme.service.location.dal.LocationRepository;
 import ru.practicum.explorewithme.service.user.dal.UserRepository;
+import ru.practicum.explorewithme.service.user.dto.UserShortDto;
+import ru.practicum.explorewithme.service.user.mapper.UserMapper;
+import ru.practicum.explorewithme.service.user.model.User;
 import ru.practicum.explorewithme.stats.client.StatsClient;
 import ru.practicum.explorewithme.stats.dto.ViewStatsDTO;
 
@@ -57,13 +60,16 @@ public class EventServiceImpl implements EventService {
             throw new BadRequestException("Дата события должна быть не ранее чем через 2 часа от текущего момента");
         }
 
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("Пользователь с id=" + userId + " не найден"));
         Event event = EventMapper.toEntity(newEventDto);
-        event.setInitiator(userRepository.findById(userId).orElseThrow(() -> new NotFoundException("Пользователь с id=" + userId + " не найден")));
-        event.setCategory(categoryRepository.findById(newEventDto.getCategory()).orElseThrow(() -> new NotFoundException("Категория с id=" + newEventDto.getCategory() + " не найдена")));
+        event.setInitiatorId(userId);
+        event.setCategory(categoryRepository.findById(newEventDto.getCategory())
+                .orElseThrow(() -> new NotFoundException("Категория с id=" + newEventDto.getCategory() + " не найдена")));
         event.setState(EventState.PENDING);
         event = eventRepository.save(event);
         log.debug("Событие сохранено с id={}", event.getId());
-        return EventMapper.toFullDto(event);
+        return EventMapper.toFullDto(event, UserMapper.toShortDto(user), 0L, 0L);
     }
 
     @Override
@@ -71,24 +77,29 @@ public class EventServiceImpl implements EventService {
         log.info("Получение событий пользователя id={}, from={}, size={}", userId, from, size);
         Pageable pageable = PageRequest.of(from / size, size, Sort.by("id").ascending());
         List<Event> events = eventRepository.findAllByInitiatorId(userId, pageable).getContent();
+        Map<Long, UserShortDto> userMap = getUserMap(events);
         Map<Long, Long> confirmedRequests = getConfirmedRequests(events);
 
-        return events.stream().map(e -> EventMapper.toShortDto(e, confirmedRequests.getOrDefault(e.getId(), 0L), 0L)).collect(Collectors.toList());
+        return events.stream()
+                .map(e -> EventMapper.toShortDto(e, userMap.get(e.getInitiatorId()),
+                        confirmedRequests.getOrDefault(e.getId(), 0L), 0L))
+                .collect(Collectors.toList());
     }
 
     @Override
     public EventFullDto getEvent(Long userId, Long eventId) {
         log.info("Получение события id={} пользователя id={}", eventId, userId);
-        Event event = eventRepository.findByIdAndInitiatorId(eventId, userId).orElseThrow(() -> new NotFoundException("Событие с id=" + eventId + " не найдено или недоступно"));
-        // Заглушка: confirmedRequests = 0 (в ШАГ 9 заменяется на requestClient)
-        return EventMapper.toFullDto(event, 0L, 0L);
+        Event event = eventRepository.findByIdAndInitiatorId(eventId, userId)
+                .orElseThrow(() -> new NotFoundException("Событие с id=" + eventId + " не найдено или недоступно"));
+        return EventMapper.toFullDto(event, getInitiator(event.getInitiatorId()), 0L, 0L);
     }
 
     @Override
     @Transactional
     public EventFullDto updateEvent(Long userId, Long eventId, UpdateEventUserRequest request) {
         log.info("Обновление события id={} пользователем id={}", eventId, userId);
-        Event event = eventRepository.findByIdAndInitiatorId(eventId, userId).orElseThrow(() -> new NotFoundException("Событие с id=" + eventId + " не найдено или недоступно"));
+        Event event = eventRepository.findByIdAndInitiatorId(eventId, userId)
+                .orElseThrow(() -> new NotFoundException("Событие с id=" + eventId + " не найдено или недоступно"));
 
         if (event.getState() == EventState.PUBLISHED) {
             throw new ConflictException("Нельзя редактировать опубликованное событие");
@@ -110,34 +121,42 @@ public class EventServiceImpl implements EventService {
         }
 
         if (request.getCategory() != null) {
-            event.setCategory(categoryRepository.findById(request.getCategory()).orElseThrow(() -> new NotFoundException("Категория с id=" + request.getCategory() + " не найдена")));
+            event.setCategory(categoryRepository.findById(request.getCategory())
+                    .orElseThrow(() -> new NotFoundException("Категория с id=" + request.getCategory() + " не найдена")));
         }
 
         EventMapper.updateEntityFromRequest(request, event);
         eventRepository.save(event);
         log.debug("Событие обновлено");
-        // Заглушка: confirmedRequests = 0 (в ШАГ 9 заменяется на requestClient)
-        return EventMapper.toFullDto(event, 0L, 0L);
+        return EventMapper.toFullDto(event, getInitiator(event.getInitiatorId()), 0L, 0L);
     }
 
     @Override
     public List<EventFullDto> getEventsByAdmin(EventSearchParamsAdmin params) {
-        log.info("Получение событий администратором: users={}, states={}, categories={}, rangeStart={}, rangeEnd={}, from={}, size={}", params.getUsers(), params.getStates(), params.getCategories(), params.getRangeStart(), params.getRangeEnd(), params.getFrom(), params.getSize());
+        log.info("Получение событий администратором: users={}, states={}, categories={}, rangeStart={}, rangeEnd={}, from={}, size={}",
+                params.getUsers(), params.getStates(), params.getCategories(),
+                params.getRangeStart(), params.getRangeEnd(), params.getFrom(), params.getSize());
 
         BooleanExpression predicate = EventPredicate.buildAdmin(params);
 
-        Pageable pageable = PageRequest.of(params.getFrom() / params.getSize(), params.getSize(), Sort.by("id").ascending());
+        Pageable pageable = PageRequest.of(params.getFrom() / params.getSize(), params.getSize(),
+                Sort.by("id").ascending());
         Page<Event> events = eventRepository.findAll(predicate, pageable);
+        Map<Long, UserShortDto> userMap = getUserMap(events.getContent());
         Map<Long, Long> confirmedRequests = getConfirmedRequests(events.getContent());
 
-        return events.stream().map(e -> EventMapper.toFullDto(e, confirmedRequests.getOrDefault(e.getId(), 0L), 0L)).collect(Collectors.toList());
+        return events.stream()
+                .map(e -> EventMapper.toFullDto(e, userMap.get(e.getInitiatorId()),
+                        confirmedRequests.getOrDefault(e.getId(), 0L), 0L))
+                .collect(Collectors.toList());
     }
 
     @Override
     @Transactional
     public EventFullDto updateEventByAdmin(Long eventId, UpdateEventAdminRequest request) {
         log.info("Обновление события id={} администратором", eventId);
-        Event event = eventRepository.findById(eventId).orElseThrow(() -> new NotFoundException("Событие с id=" + eventId + " не найдено"));
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new NotFoundException("Событие с id=" + eventId + " не найдено"));
 
         if (request.getStateAction() != null) {
             if (request.getStateAction() == AdminEventStateAction.PUBLISH_EVENT) {
@@ -166,14 +185,14 @@ public class EventServiceImpl implements EventService {
         }
 
         if (request.getCategory() != null) {
-            event.setCategory(categoryRepository.findById(request.getCategory()).orElseThrow(() -> new NotFoundException("Категория с id=" + request.getCategory() + " не найдена")));
+            event.setCategory(categoryRepository.findById(request.getCategory())
+                    .orElseThrow(() -> new NotFoundException("Категория с id=" + request.getCategory() + " не найдена")));
         }
 
         EventMapper.updateEntityFromAdminRequest(request, event);
         eventRepository.save(event);
         log.debug("Событие обновлено администратором");
-        // Заглушка: confirmedRequests = 0 (в ШАГ 9 заменяется на requestClient)
-        return EventMapper.toFullDto(event, 0L, 0L);
+        return EventMapper.toFullDto(event, getInitiator(event.getInitiatorId()), 0L, 0L);
     }
 
     @Override
@@ -189,11 +208,12 @@ public class EventServiceImpl implements EventService {
         }
 
         List<Event> events = page.getContent();
+        Map<Long, UserShortDto> userMap = getUserMap(events);
         Map<Long, Long> confirmedRequests = getConfirmedRequests(events);
         Map<Long, Long> views = getViewsMap(events);
 
         return events.stream()
-                .map(e -> EventMapper.toFullDto(e,
+                .map(e -> EventMapper.toFullDto(e, userMap.get(e.getInitiatorId()),
                         confirmedRequests.getOrDefault(e.getId(), 0L),
                         views.getOrDefault(e.getId(), 0L)))
                 .collect(Collectors.toList());
@@ -224,8 +244,7 @@ public class EventServiceImpl implements EventService {
         return viewsMap;
     }
 
-    // Заглушка: всегда возвращает пустую Map (confirmedRequests = 0 для всех).
-    // В ШАГ 9 заменяется на requestClient.getConfirmedRequestsCount(eventIds).
+    // Заглушка: в ШАГ 9 заменяется на requestClient.getConfirmedRequestsCount(eventIds).
     private Map<Long, Long> getConfirmedRequests(List<Event> events) {
         return Collections.emptyMap();
     }
@@ -234,11 +253,15 @@ public class EventServiceImpl implements EventService {
     public List<EventShortDto> getEventsPublic(EventSearchParams params) {
         BooleanExpression predicate = EventPredicate.build(params);
 
-        Pageable pageable = PageRequest.of(params.getFrom() / params.getSize(), params.getSize(), getSort(params.getSort()));
+        Pageable pageable = PageRequest.of(params.getFrom() / params.getSize(), params.getSize(),
+                getSort(params.getSort()));
 
         Page<Event> page = eventRepository.findAll(predicate, pageable);
+        Map<Long, UserShortDto> userMap = getUserMap(page.getContent());
 
-        List<EventShortDto> list = page.stream().map(EventMapper::toShortDto).toList();
+        List<EventShortDto> list = page.stream()
+                .map(e -> EventMapper.toShortDto(e, userMap.get(e.getInitiatorId()), 0L, 0L))
+                .toList();
         log.info("Список событий после фильтрации {}", list);
         return list;
     }
@@ -252,7 +275,10 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public EventFullDto getEventPublic(Long eventId) {
-        EventFullDto event = eventRepository.findById(eventId).map(EventMapper::toFullDto).orElseThrow(() -> new NotFoundException("Событие " + eventId + " не найдено"));
+        Event e = eventRepository.findById(eventId)
+                .orElseThrow(() -> new NotFoundException("Событие " + eventId + " не найдено"));
+
+        EventFullDto event = EventMapper.toFullDto(e, getInitiator(e.getInitiatorId()), 0L, 0L);
 
         if (event.getState() != EventState.PUBLISHED) {
             throw new NotFoundException("Событие должно быть опубликовано");
@@ -260,8 +286,6 @@ public class EventServiceImpl implements EventService {
 
         long views = getViews(eventId, event);
         event.setViews(views);
-
-        // Заглушка: confirmedRequests = 0 (в ШАГ 9 заменяется на requestClient)
         event.setConfirmedRequests(0L);
         return event;
     }
@@ -271,12 +295,25 @@ public class EventServiceImpl implements EventService {
         LocalDateTime dateTime = LocalDateTime.parse(event.getCreatedOn(), formatter);
         long views = 0;
         try {
-            ResponseEntity<List<ViewStatsDTO>> response = statsClient.getStats(dateTime, LocalDateTime.now(), List.of("/events/" + eventId), true);
+            ResponseEntity<List<ViewStatsDTO>> response = statsClient.getStats(
+                    dateTime, LocalDateTime.now(), List.of("/events/" + eventId), true);
             List<ViewStatsDTO> stats = response.getBody();
             views = (stats == null) ? 0 : stats.getFirst().getHits();
-        } catch (Exception e) {
-            log.error("Ошибка при получении статистики для события {}: {}", eventId, e.getMessage());
+        } catch (Exception ex) {
+            log.error("Ошибка при получении статистики для события {}: {}", eventId, ex.getMessage());
         }
         return views;
+    }
+
+    private UserShortDto getInitiator(Long initiatorId) {
+        return userRepository.findById(initiatorId)
+                .map(UserMapper::toShortDto)
+                .orElse(new UserShortDto(initiatorId, "N/A"));
+    }
+
+    private Map<Long, UserShortDto> getUserMap(List<Event> events) {
+        List<Long> ids = events.stream().map(Event::getInitiatorId).distinct().collect(Collectors.toList());
+        return userRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(User::getId, UserMapper::toShortDto));
     }
 }

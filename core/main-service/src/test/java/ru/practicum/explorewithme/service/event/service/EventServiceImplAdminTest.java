@@ -20,7 +20,10 @@ import ru.practicum.explorewithme.service.event.enums.EventState;
 import ru.practicum.explorewithme.service.event.model.Event;
 import ru.practicum.explorewithme.service.event.model.Location;
 import ru.practicum.explorewithme.service.exception.ConflictException;
+import ru.practicum.explorewithme.service.location.dal.LocationRepository;
+import ru.practicum.explorewithme.service.user.dal.UserRepository;
 import ru.practicum.explorewithme.service.user.model.User;
+import ru.practicum.explorewithme.stats.client.StatsClient;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -37,7 +40,13 @@ class EventServiceImplAdminTest {
     @Mock
     private EventRepository eventRepository;
     @Mock
+    private UserRepository userRepository;
+    @Mock
     private CategoryRepository categoryRepository;
+    @Mock
+    private StatsClient statsClient;
+    @Mock
+    private LocationRepository locationRepository;
 
     @InjectMocks
     private EventServiceImpl eventService;
@@ -52,7 +61,7 @@ class EventServiceImplAdminTest {
         category = new Category(1L, "Category");
         event = new Event();
         event.setId(1L);
-        event.setInitiator(user);
+        event.setInitiatorId(user.getId());
         event.setCategory(category);
         event.setState(EventState.PENDING);
         event.setEventDate(LocalDateTime.now().plusDays(1));

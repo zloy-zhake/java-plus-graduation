@@ -17,7 +17,6 @@ import ru.practicum.explorewithme.service.request.enums.ParticipationRequestStat
 import ru.practicum.explorewithme.service.request.mapper.ParticipationRequestMapper;
 import ru.practicum.explorewithme.service.request.model.ParticipationRequest;
 import ru.practicum.explorewithme.service.user.dal.UserRepository;
-import ru.practicum.explorewithme.service.user.model.User;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -159,17 +158,19 @@ public class EventRequestServiceImpl implements EventRequestService {
         if (eventRequestRepository.existsByRequesterIdAndEventId(userId, eventId)) {
             throw new ConflictException("Запрос на добавление пользователя" + userId + "на событие " + eventId + " уже существует");
         }
-        User participant = userRepository.findById(userId).orElseThrow(() -> new NotFoundException("Пользователь " + userId + " не найден"));
+        if (!userRepository.existsById(userId)) {
+            throw new NotFoundException("Пользователь " + userId + " не найден");
+        }
         Event event = eventRepository.findById(eventId).orElseThrow(() -> new NotFoundException("Событие " + eventId + " не найдено"));
 
-        if (event.getInitiator().getId().equals(userId))
+        if (event.getInitiatorId().equals(userId))
             throw new ConflictException("Инициатор не может присылать запрос на свое событие");
 
         if (!event.getState().equals(EventState.PUBLISHED)) {
             throw new ConflictException("Нельзя добавиться в неопубликованное событие");
         }
         ParticipationRequest request = ParticipationRequest.builder()
-                .requester(participant)
+                .requesterId(userId)
                 .event(event)
                 .created(LocalDateTime.now())
                 .build();
