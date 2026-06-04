@@ -5,7 +5,6 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import ru.practicum.explorewithme.service.event.model.Event;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -29,7 +28,9 @@ public class Compilation {
     private Boolean pinned;
 
     @Setter
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "compilation_events", joinColumns = @JoinColumn(name = "compilation_id"), inverseJoinColumns = @JoinColumn(name = "event_id"))
-    private Set<Event> events = new HashSet<>();
+    @ElementCollection
+    @CollectionTable(name = "compilation_events",
+            joinColumns = @JoinColumn(name = "compilation_id"))
+    @Column(name = "event_id")
+    private Set<Long> eventIds = new HashSet<>();
 }

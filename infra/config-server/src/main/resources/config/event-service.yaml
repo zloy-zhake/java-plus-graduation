@@ -4,6 +4,10 @@ spring:
     username: ${POSTGRES_USER:postgres}
     password: ${POSTGRES_PASSWORD:54321}
     driver-class-name: org.postgresql.Driver
+  sql:
+    init:
+      mode: always
+      continue-on-error: true
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:

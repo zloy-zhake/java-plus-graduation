@@ -13,9 +13,13 @@ import ru.practicum.explorewithme.service.compilation.dto.UpdateCompilationReque
 import ru.practicum.explorewithme.service.compilation.mapper.CompilationMapper;
 import ru.practicum.explorewithme.service.compilation.model.Compilation;
 import ru.practicum.explorewithme.service.event.dal.EventRepository;
+import ru.practicum.explorewithme.service.event.dto.EventShortDto;
+import ru.practicum.explorewithme.service.event.mapper.EventMapper;
 import ru.practicum.explorewithme.service.event.model.Event;
 import ru.practicum.explorewithme.service.exception.NotFoundException;
+import ru.practicum.explorewithme.service.user.dto.UserShortDto;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -28,63 +32,55 @@ public class CompilationServiceImpl implements CompilationService {
     private final CompilationRepository compilationRepository;
     private final EventRepository eventRepository;
 
-    private void validateEventsExist(Set<Event> events, List<Long> eventIds) {
-        if (eventIds != null && !eventIds.isEmpty()) {
-            Set<Long> foundIds = events.stream().map(Event::getId).collect(Collectors.toSet());
-            for (Long eventId : eventIds) {
-                if (!foundIds.contains(eventId)) {
-                    throw new NotFoundException("Событие с id=" + eventId + " не найдено");
-                }
-            }
-        }
-    }
-
     @Override
     @Transactional
     public CompilationDto create(NewCompilationDto dto) {
         Compilation compilation = CompilationMapper.toEntity(dto);
 
         if (dto.getEvents() != null && !dto.getEvents().isEmpty()) {
-            Set<Event> events = new HashSet<>(eventRepository.findAllById(dto.getEvents()));
+            List<Event> events = eventRepository.findAllById(dto.getEvents());
             validateEventsExist(events, dto.getEvents());
-            compilation.setEvents(events);
+            compilation.setEventIds(new HashSet<>(dto.getEvents()));
         }
 
         compilation = compilationRepository.save(compilation);
         log.info("Создана подборка: {}", compilation.getId());
-        return CompilationMapper.toDto(compilation);
+        return CompilationMapper.toDto(compilation, toShortDtos(compilation.getEventIds()));
     }
 
     @Override
     @Transactional
     public CompilationDto update(Long compId, UpdateCompilationRequestDto request) {
-        Compilation compilation = compilationRepository.findById(compId).orElseThrow(() -> new NotFoundException("Подборка с id=" + compId + " не найдена"));
+        Compilation compilation = compilationRepository.findById(compId)
+                .orElseThrow(() -> new NotFoundException("Подборка с id=" + compId + " не найдена"));
 
         CompilationMapper.updateEntityFromRequest(request, compilation);
 
         if (request.getEvents() != null) {
-            Set<Event> events = new HashSet<>(eventRepository.findAllById(request.getEvents()));
+            List<Event> events = eventRepository.findAllById(request.getEvents());
             validateEventsExist(events, request.getEvents());
-            compilation.setEvents(events);
+            compilation.setEventIds(new HashSet<>(request.getEvents()));
         }
 
         compilation = compilationRepository.save(compilation);
         log.info("Обновлена подборка: {}", compilation.getId());
-        return CompilationMapper.toDto(compilation);
+        return CompilationMapper.toDto(compilation, toShortDtos(compilation.getEventIds()));
     }
 
     @Override
     @Transactional
     public void delete(Long compId) {
-        Compilation compilation = compilationRepository.findById(compId).orElseThrow(() -> new NotFoundException("Подборка с id=" + compId + " не найдена"));
+        Compilation compilation = compilationRepository.findById(compId)
+                .orElseThrow(() -> new NotFoundException("Подборка с id=" + compId + " не найдена"));
         compilationRepository.delete(compilation);
         log.info("Удалена подборка: {}", compId);
     }
 
     @Override
     public CompilationDto getById(Long compId) {
-        Compilation compilation = compilationRepository.findById(compId).orElseThrow(() -> new NotFoundException("Подборка с id=" + compId + " не найдена"));
-        return CompilationMapper.toDto(compilation);
+        Compilation compilation = compilationRepository.findById(compId)
+                .orElseThrow(() -> new NotFoundException("Подборка с id=" + compId + " не найдена"));
+        return CompilationMapper.toDto(compilation, toShortDtos(compilation.getEventIds()));
     }
 
     @Override
@@ -98,6 +94,25 @@ public class CompilationServiceImpl implements CompilationService {
             compilations = compilationRepository.findAll(pageable).getContent();
         }
 
-        return compilations.stream().map(CompilationMapper::toDto).collect(Collectors.toList());
+        return compilations.stream()
+                .map(c -> CompilationMapper.toDto(c, toShortDtos(c.getEventIds())))
+                .collect(Collectors.toList());
+    }
+
+    private void validateEventsExist(List<Event> found, List<Long> requestedIds) {
+        Set<Long> foundIds = found.stream().map(Event::getId).collect(Collectors.toSet());
+        for (Long id : requestedIds) {
+            if (!foundIds.contains(id)) {
+                throw new NotFoundException("Событие с id=" + id + " не найдено");
+            }
+        }
+    }
+
+    // Заглушка: имя инициатора = "N/A". В ШАГ 10.3 заменяется на EventClient.
+    private List<EventShortDto> toShortDtos(Set<Long> eventIds) {
+        if (eventIds == null || eventIds.isEmpty()) return Collections.emptyList();
+        return eventRepository.findAllById(eventIds).stream()
+                .map(e -> EventMapper.toShortDto(e, new UserShortDto(e.getInitiatorId(), "N/A"), 0L, 0L))
+                .collect(Collectors.toList());
     }
 }

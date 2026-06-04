@@ -44,7 +44,7 @@ class CompilationServiceImplTest {
         ReflectionTestUtils.setField(compilation, "id", 1L);
         compilation.setTitle("Test Compilation");
         compilation.setPinned(true);
-        compilation.setEvents(new HashSet<>());
+        compilation.setEventIds(new HashSet<>());
 
         newCompilationDto = new NewCompilationDto("Test Compilation", true, List.of());
     }
