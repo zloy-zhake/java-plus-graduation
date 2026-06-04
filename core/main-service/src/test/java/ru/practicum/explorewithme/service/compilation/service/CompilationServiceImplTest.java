@@ -7,12 +7,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import ru.practicum.explorewithme.service.compilation.client.EventClient;
 import ru.practicum.explorewithme.service.compilation.dal.CompilationRepository;
 import ru.practicum.explorewithme.service.compilation.dto.CompilationDto;
 import ru.practicum.explorewithme.service.compilation.dto.NewCompilationDto;
 import ru.practicum.explorewithme.service.compilation.dto.UpdateCompilationRequestDto;
 import ru.practicum.explorewithme.service.compilation.model.Compilation;
-import ru.practicum.explorewithme.service.event.dal.EventRepository;
 import ru.practicum.explorewithme.service.exception.NotFoundException;
 
 import java.util.HashSet;
@@ -30,7 +30,7 @@ class CompilationServiceImplTest {
     private CompilationRepository compilationRepository;
 
     @Mock
-    private EventRepository eventRepository;
+    private EventClient eventClient;
 
     @InjectMocks
     private CompilationServiceImpl compilationService;

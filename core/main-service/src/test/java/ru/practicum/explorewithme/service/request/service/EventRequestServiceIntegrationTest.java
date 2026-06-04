@@ -56,6 +56,8 @@ class EventRequestServiceIntegrationTest {
     private RequestClient requestClient;
     @MockBean
     private EventClient requestEventClient;
+    @MockBean
+    private ru.practicum.explorewithme.service.compilation.client.EventClient compilationEventClient;
 
     private final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private Long categoryId;

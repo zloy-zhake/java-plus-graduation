@@ -7,6 +7,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.explorewithme.service.event.client.RequestClient;
+import ru.practicum.explorewithme.service.compilation.client.EventClient;
 import ru.practicum.explorewithme.service.event.client.UserClient;
 import ru.practicum.explorewithme.service.user.dto.UserShortDto;
 
@@ -49,6 +50,8 @@ class EventServiceIntegrationTest {
     private UserClient eventUserClient;
     @MockBean
     private RequestClient requestClient;
+    @MockBean
+    private EventClient compilationEventClient;
 
     private final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
