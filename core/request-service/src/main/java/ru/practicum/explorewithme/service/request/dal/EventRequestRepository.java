@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface EventRequestRepository extends JpaRepository<ParticipationRequest, Long> {
-    List<ParticipationRequest> findAllByEventIdAndEventInitiatorId(Long eventId, Long initiatorId);
+    List<ParticipationRequest> findAllByEventId(Long eventId);
 
     Optional<ParticipationRequest> findByEventIdAndRequesterId(Long eventId, Long requesterId);
 
@@ -19,10 +19,10 @@ public interface EventRequestRepository extends JpaRepository<ParticipationReque
 
     List<ParticipationRequest> findAllByIdInAndStatus(List<Long> ids, ParticipationRequestStatus status);
 
-    @Query("SELECT new ru.practicum.explorewithme.service.request.dto.ConfirmedRequestsCount(r.event.id, COUNT(r.id)) " +
+    @Query("SELECT new ru.practicum.explorewithme.service.request.dto.ConfirmedRequestsCount(r.eventId, COUNT(r.id)) " +
             "FROM ParticipationRequest r " +
-            "WHERE r.event.id IN :eventIds AND r.status = 'CONFIRMED' " +
-            "GROUP BY r.event.id")
+            "WHERE r.eventId IN :eventIds AND r.status = 'CONFIRMED' " +
+            "GROUP BY r.eventId")
     List<ConfirmedRequestsCount> countConfirmedRequestsByEventIds(@Param("eventIds") List<Long> eventIds);
 
     Boolean existsByRequesterIdAndEventId(Long userId, Long eventId);

@@ -3,7 +3,6 @@ package ru.practicum.explorewithme.service.request.model;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import ru.practicum.explorewithme.service.event.model.Event;
 import ru.practicum.explorewithme.service.request.enums.ParticipationRequestStatus;
 
 import java.time.LocalDateTime;
@@ -25,9 +24,8 @@ public class ParticipationRequest {
     @Column(nullable = false)
     LocalDateTime created;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "event_id", nullable = false)
-    Event event;
+    @Column(name = "event_id", nullable = false)
+    Long eventId;
 
     @Column(name = "requester_id", nullable = false)
     Long requesterId;

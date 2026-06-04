@@ -38,11 +38,9 @@ public class EventRequestServiceImpl implements EventRequestService {
     @Override
     public List<ParticipationRequestDto> getEventRequests(Long userId, Long eventId) {
         log.info("Получение заявок на событие id={} пользователя id={}", eventId, userId);
-        Event event = eventRepository.findByIdAndInitiatorId(eventId, userId)
+        eventRepository.findByIdAndInitiatorId(eventId, userId)
                 .orElseThrow(() -> new NotFoundException("Событие с id=" + eventId + " не найдено или недоступно"));
-        List<ParticipationRequest> requests = eventRequestRepository
-                .findAllByEventIdAndEventInitiatorId(eventId, userId);
-        return requests.stream()
+        return eventRequestRepository.findAllByEventId(eventId).stream()
                 .map(ParticipationRequestMapper::toDto)
                 .collect(Collectors.toList());
     }
@@ -175,7 +173,7 @@ public class EventRequestServiceImpl implements EventRequestService {
         }
         ParticipationRequest request = ParticipationRequest.builder()
                 .requesterId(userId)
-                .event(event)
+                .eventId(eventId)
                 .created(LocalDateTime.now())
                 .build();
 

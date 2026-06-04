@@ -47,8 +47,7 @@ class EventRequestServiceImplTest {
     @Test
     void getEventRequests_Success() {
         when(eventRepository.findByIdAndInitiatorId(1L, 1L)).thenReturn(Optional.of(event));
-        when(eventRequestRepository.findAllByEventIdAndEventInitiatorId(1L, 1L))
-                .thenReturn(List.of());
+        when(eventRequestRepository.findAllByEventId(1L)).thenReturn(List.of());
 
         List<ParticipationRequestDto> result = requestService.getEventRequests(1L, 1L);
         assertThat(result).isEmpty();
@@ -62,7 +61,7 @@ class EventRequestServiceImplTest {
         req.setId(10L);
         req.setRequesterId(1L);
         req.setStatus(ParticipationRequestStatus.PENDING);
-        req.setEvent(event);
+        req.setEventId(event.getId());
 
         when(eventRequestRepository.findAllByIdInAndStatus(List.of(10L), ParticipationRequestStatus.PENDING))
                 .thenReturn(List.of(req));

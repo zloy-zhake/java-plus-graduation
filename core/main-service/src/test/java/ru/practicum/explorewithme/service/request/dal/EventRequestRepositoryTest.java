@@ -73,17 +73,16 @@ class EventRequestRepositoryTest {
     }
 
     @Test
-    void findAllByEventIdAndEventInitiatorId_ReturnsRequests() {
+    void findAllByEventId_ReturnsRequests() {
         createRequest(requester, ParticipationRequestStatus.PENDING);
-        List<ParticipationRequest> result = requestRepository
-                .findAllByEventIdAndEventInitiatorId(event.getId(), initiator.getId());
+        List<ParticipationRequest> result = requestRepository.findAllByEventId(event.getId());
         assertThat(result).hasSize(1);
     }
 
     private void createRequest(User requester, ParticipationRequestStatus status) {
         ParticipationRequest req = new ParticipationRequest();
         req.setCreated(LocalDateTime.now());
-        req.setEvent(event);
+        req.setEventId(event.getId());
         req.setRequesterId(requester.getId());
         req.setStatus(status);
         em.persist(req);
