@@ -49,7 +49,8 @@ public class EventPublicController {
         EndpointHitDTO hit = new EndpointHitDTO();
         hit.setApp("ewm-main-service");
         hit.setUri(request.getRequestURI());
-        hit.setIp(request.getRemoteAddr());
+        String ip = request.getHeader("X-Forwarded-For");
+        hit.setIp(ip != null ? ip.split(",")[0].trim() : request.getRemoteAddr());
         hit.setTimestamp(LocalDateTime.now());
         statsClient.saveHit(hit);
 
@@ -79,7 +80,8 @@ public class EventPublicController {
         hit.setApp(appProperties.getName());
         log.info("Название приложения {}",appProperties.getName());
         hit.setUri(request.getRequestURI());
-        hit.setIp(request.getRemoteAddr());
+        String ip = request.getHeader("X-Forwarded-For");
+        hit.setIp(ip != null ? ip.split(",")[0].trim() : request.getRemoteAddr());
         hit.setTimestamp(LocalDateTime.now());
         statsClient.saveHit(hit);
 // получает событие

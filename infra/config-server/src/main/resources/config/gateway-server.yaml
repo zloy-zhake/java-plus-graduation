@@ -10,6 +10,26 @@ spring:
           uri: lb://request-service
           predicates:
             - Path=/users/*/requests, /users/*/requests/**
+        - id: event-service-private
+          uri: lb://event-service
+          predicates:
+            - Path=/users/*/events, /users/*/events/**
+        - id: event-service-public
+          uri: lb://event-service
+          predicates:
+            - Path=/events, /events/**
+        - id: event-service-admin-events
+          uri: lb://event-service
+          predicates:
+            - Path=/admin/events, /admin/events/**
+        - id: event-service-categories
+          uri: lb://event-service
+          predicates:
+            - Path=/categories, /categories/**, /admin/categories, /admin/categories/**
+        - id: event-service-locations
+          uri: lb://event-service
+          predicates:
+            - Path=/locations, /locations/**, /admin/locations, /admin/locations/**
         - id: user-service
           uri: lb://user-service
           predicates:
