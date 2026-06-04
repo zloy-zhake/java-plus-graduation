@@ -5,6 +5,7 @@ import ru.practicum.explorewithme.service.request.dto.EventRequestStatusUpdateRe
 import ru.practicum.explorewithme.service.request.dto.ParticipationRequestDto;
 
 import java.util.List;
+import java.util.Map;
 
 public interface EventRequestService {
     List<ParticipationRequestDto> getEventRequests(Long userId, Long eventId);
@@ -17,4 +18,6 @@ public interface EventRequestService {
     List<ParticipationRequestDto> getUserEvents(Long userId);
 
     ParticipationRequestDto removeParticipation(Long userId, Long requestId);
+
+    Map<Long, Long> getConfirmedRequestsCounts(List<Long> eventIds);
 }

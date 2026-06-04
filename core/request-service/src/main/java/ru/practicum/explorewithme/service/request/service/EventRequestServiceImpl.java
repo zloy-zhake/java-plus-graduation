@@ -10,6 +10,7 @@ import ru.practicum.explorewithme.service.event.model.Event;
 import ru.practicum.explorewithme.service.exception.ConflictException;
 import ru.practicum.explorewithme.service.exception.NotFoundException;
 import ru.practicum.explorewithme.service.request.dal.EventRequestRepository;
+import ru.practicum.explorewithme.service.request.dto.ConfirmedRequestsCount;
 import ru.practicum.explorewithme.service.request.dto.EventRequestStatusUpdateRequest;
 import ru.practicum.explorewithme.service.request.dto.EventRequestStatusUpdateResult;
 import ru.practicum.explorewithme.service.request.dto.ParticipationRequestDto;
@@ -22,6 +23,7 @@ import ru.practicum.explorewithme.service.user.dto.UserShortDto;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -201,5 +203,11 @@ public class EventRequestServiceImpl implements EventRequestService {
         eventRequestRepository.delete(request);
         request.setStatus(ParticipationRequestStatus.CANCELED);
         return ParticipationRequestMapper.toDto(request);
+    }
+
+    @Override
+    public Map<Long, Long> getConfirmedRequestsCounts(List<Long> eventIds) {
+        return eventRequestRepository.countConfirmedRequestsByEventIds(eventIds).stream()
+                .collect(Collectors.toMap(ConfirmedRequestsCount::getEventId, ConfirmedRequestsCount::getCount));
     }
 }

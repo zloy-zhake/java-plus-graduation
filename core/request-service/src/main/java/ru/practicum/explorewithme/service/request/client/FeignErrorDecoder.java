@@ -1,12 +1,11 @@
-package ru.practicum.explorewithme.service.event.client;
+package ru.practicum.explorewithme.service.request.client;
 
-import feign.Response;
 import feign.codec.ErrorDecoder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import ru.practicum.explorewithme.service.exception.NotFoundException;
 
-@Configuration("eventFeignErrorDecoder")
+@Configuration("requestFeignErrorDecoder")
 public class FeignErrorDecoder {
 
     @Bean
