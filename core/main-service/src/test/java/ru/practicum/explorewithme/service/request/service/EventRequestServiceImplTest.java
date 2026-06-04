@@ -1,22 +1,22 @@
 package ru.practicum.explorewithme.service.request.service;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import ru.practicum.explorewithme.service.event.dal.EventRepository;
-import ru.practicum.explorewithme.service.event.model.Event;
 import ru.practicum.explorewithme.service.exception.ConflictException;
+import ru.practicum.explorewithme.service.request.client.EventClient;
+import ru.practicum.explorewithme.service.request.client.UserClient;
 import ru.practicum.explorewithme.service.request.dal.EventRequestRepository;
+import ru.practicum.explorewithme.service.request.dto.EventForRequestDto;
 import ru.practicum.explorewithme.service.request.dto.EventRequestStatusUpdateRequest;
 import ru.practicum.explorewithme.service.request.dto.EventRequestStatusUpdateResult;
 import ru.practicum.explorewithme.service.request.dto.ParticipationRequestDto;
 import ru.practicum.explorewithme.service.request.enums.ParticipationRequestStatus;
 import ru.practicum.explorewithme.service.request.model.ParticipationRequest;
+
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -27,26 +27,18 @@ import static org.mockito.Mockito.when;
 class EventRequestServiceImplTest {
 
     @Mock
-    private EventRepository eventRepository;
-    @Mock
     private EventRequestRepository eventRequestRepository;
+    @Mock
+    private UserClient userClient;
+    @Mock
+    private EventClient eventClient;
 
     @InjectMocks
     private EventRequestServiceImpl requestService;
 
-    private Event event;
-
-    @BeforeEach
-    void setUp() {
-        event = new Event();
-        event.setId(1L);
-        event.setParticipantLimit(2);
-        event.setRequestModeration(true);
-    }
-
     @Test
     void getEventRequests_Success() {
-        when(eventRepository.findByIdAndInitiatorId(1L, 1L)).thenReturn(Optional.of(event));
+        when(eventClient.getEventById(1L)).thenReturn(new EventForRequestDto(1L, 1L, "PUBLISHED", 2, true));
         when(eventRequestRepository.findAllByEventId(1L)).thenReturn(List.of());
 
         List<ParticipationRequestDto> result = requestService.getEventRequests(1L, 1L);
@@ -55,13 +47,13 @@ class EventRequestServiceImplTest {
 
     @Test
     void updateEventRequests_ConfirmWithRemainingLimit() {
-        when(eventRepository.findByIdAndInitiatorId(1L, 1L)).thenReturn(Optional.of(event));
+        when(eventClient.getEventById(1L)).thenReturn(new EventForRequestDto(1L, 1L, "PUBLISHED", 2, true));
 
         ParticipationRequest req = new ParticipationRequest();
         req.setId(10L);
         req.setRequesterId(1L);
         req.setStatus(ParticipationRequestStatus.PENDING);
-        req.setEventId(event.getId());
+        req.setEventId(1L);
 
         when(eventRequestRepository.findAllByIdInAndStatus(List.of(10L), ParticipationRequestStatus.PENDING))
                 .thenReturn(List.of(req));
@@ -81,8 +73,7 @@ class EventRequestServiceImplTest {
 
     @Test
     void updateEventRequests_ConflictWhenPrerequisitesNotMet() {
-        event.setParticipantLimit(0);
-        when(eventRepository.findByIdAndInitiatorId(1L, 1L)).thenReturn(Optional.of(event));
+        when(eventClient.getEventById(1L)).thenReturn(new EventForRequestDto(1L, 1L, "PUBLISHED", 0, true));
 
         EventRequestStatusUpdateRequest updateReq = EventRequestStatusUpdateRequest.builder()
                 .requestIds(List.of(1L))

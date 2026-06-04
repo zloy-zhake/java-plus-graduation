@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.explorewithme.service.category.dal.CategoryRepository;
+import ru.practicum.explorewithme.service.event.client.RequestClient;
 import ru.practicum.explorewithme.service.event.client.UserClient;
 import ru.practicum.explorewithme.service.event.dal.EventRepository;
 import ru.practicum.explorewithme.service.event.dto.*;
@@ -48,6 +49,7 @@ public class EventServiceImpl implements EventService {
     private final CategoryRepository categoryRepository;
     private final StatsClient statsClient;
     private final LocationRepository locationRepository;
+    private final RequestClient requestClient;
 
     @Override
     @Transactional
@@ -247,9 +249,10 @@ public class EventServiceImpl implements EventService {
         return viewsMap;
     }
 
-    // Заглушка: в ШАГ 9 заменяется на requestClient.getConfirmedRequestsCount(eventIds).
     private Map<Long, Long> getConfirmedRequests(List<Event> events) {
-        return Collections.emptyMap();
+        if (events.isEmpty()) return Collections.emptyMap();
+        List<Long> eventIds = events.stream().map(Event::getId).collect(Collectors.toList());
+        return requestClient.getConfirmedRequestsCounts(eventIds);
     }
 
     @Override

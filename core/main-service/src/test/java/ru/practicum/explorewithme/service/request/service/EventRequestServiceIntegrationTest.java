@@ -6,12 +6,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.explorewithme.service.event.client.RequestClient;
 import ru.practicum.explorewithme.service.event.client.UserClient;
+import ru.practicum.explorewithme.service.request.client.EventClient;
+import ru.practicum.explorewithme.service.request.dto.EventForRequestDto;
 import ru.practicum.explorewithme.service.user.dto.UserShortDto;
+
+import java.util.Collections;
+import java.util.stream.Collectors;
 
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.when;
+
 import ru.practicum.explorewithme.service.category.dto.CategoryDto;
 import ru.practicum.explorewithme.service.category.dto.NewCategoryRequest;
 import ru.practicum.explorewithme.service.category.service.CategoryService;
@@ -44,6 +52,10 @@ class EventRequestServiceIntegrationTest {
 
     @MockBean
     private UserClient eventUserClient;
+    @MockBean
+    private RequestClient requestClient;
+    @MockBean
+    private EventClient requestEventClient;
 
     private final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private Long categoryId;
@@ -59,13 +71,18 @@ class EventRequestServiceIntegrationTest {
                     java.util.List<Long> ids = inv.getArgument(0);
                     return ids.stream()
                             .map(id -> new UserShortDto(id, "Test User"))
-                            .collect(java.util.stream.Collectors.toList());
+                            .collect(Collectors.toList());
                 });
+        lenient().when(requestClient.getConfirmedRequestsCounts(anyList())).thenReturn(Collections.emptyMap());
     }
 
     @Test
     void shouldGetEmptyRequestsForNewEvent() {
         var initiator = userService.registerUser(new NewUserRequest("init@example.com", "Init"));
+        long initiatorId = initiator.getId();
+
+        when(requestEventClient.getEventById(anyLong()))
+                .thenAnswer(inv -> new EventForRequestDto(inv.getArgument(0), initiatorId, "PENDING", 1, true));
 
         NewEventDto dto = NewEventDto.builder()
                 .annotation("Valid annotation for testing")

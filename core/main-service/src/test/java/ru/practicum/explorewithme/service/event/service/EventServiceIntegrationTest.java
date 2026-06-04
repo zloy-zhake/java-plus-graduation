@@ -6,11 +6,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.explorewithme.service.event.client.RequestClient;
 import ru.practicum.explorewithme.service.event.client.UserClient;
 import ru.practicum.explorewithme.service.user.dto.UserShortDto;
 
 import java.util.stream.Collectors;
 
+import java.util.Collections;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.lenient;
@@ -45,6 +47,8 @@ class EventServiceIntegrationTest {
 
     @MockBean
     private UserClient eventUserClient;
+    @MockBean
+    private RequestClient requestClient;
 
     private final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -63,6 +67,7 @@ class EventServiceIntegrationTest {
                             .map(id -> new UserShortDto(id, "Test User"))
                             .collect(Collectors.toList());
                 });
+        lenient().when(requestClient.getConfirmedRequestsCounts(anyList())).thenReturn(Collections.emptyMap());
     }
 
     @Test

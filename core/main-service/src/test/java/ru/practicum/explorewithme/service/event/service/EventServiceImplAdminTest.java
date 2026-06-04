@@ -11,6 +11,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import ru.practicum.explorewithme.service.category.dal.CategoryRepository;
 import ru.practicum.explorewithme.service.category.model.Category;
+import ru.practicum.explorewithme.service.event.client.RequestClient;
 import ru.practicum.explorewithme.service.event.client.UserClient;
 import ru.practicum.explorewithme.service.event.dal.EventRepository;
 import ru.practicum.explorewithme.service.event.dto.EventFullDto;
@@ -48,6 +49,8 @@ class EventServiceImplAdminTest {
     private StatsClient statsClient;
     @Mock
     private LocationRepository locationRepository;
+    @Mock
+    private RequestClient requestClient;
 
     @InjectMocks
     private EventServiceImpl eventService;

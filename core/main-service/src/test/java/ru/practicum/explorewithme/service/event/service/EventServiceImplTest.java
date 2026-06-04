@@ -11,6 +11,7 @@ import org.springframework.data.domain.*;
 import org.springframework.http.ResponseEntity;
 import ru.practicum.explorewithme.service.category.dal.CategoryRepository;
 import ru.practicum.explorewithme.service.category.model.Category;
+import ru.practicum.explorewithme.service.event.client.RequestClient;
 import ru.practicum.explorewithme.service.event.client.UserClient;
 import ru.practicum.explorewithme.service.event.dal.EventRepository;
 import ru.practicum.explorewithme.service.event.dto.*;
@@ -51,6 +52,8 @@ class EventServiceImplTest {
     private StatsClient statsClient;
     @Mock
     private LocationRepository locationRepository;
+    @Mock
+    private RequestClient requestClient;
 
     @InjectMocks
     private EventServiceImpl eventService;
