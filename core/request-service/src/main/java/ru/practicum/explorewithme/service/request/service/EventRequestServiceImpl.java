@@ -182,12 +182,14 @@ public class EventRequestServiceImpl implements EventRequestService {
         Integer numParticipants = eventRequestRepository.countByEventId(eventId);
         log.info("limit={}, confirmed={}", event.getParticipantLimit(), numParticipants);
 
-        if (event.getParticipantLimit() == 0) {
-            request.setStatus(ParticipationRequestStatus.CONFIRMED);
-        } else if (event.getParticipantLimit() > numParticipants) {
-            request.setStatus(ParticipationRequestStatus.PENDING);
-        } else {
+        if (event.getParticipantLimit() != 0 && numParticipants >= event.getParticipantLimit()) {
             throw new ConflictException("Количество участников события не может превышать " + event.getParticipantLimit());
+        }
+
+        if (event.getParticipantLimit() == 0 || !event.getRequestModeration()) {
+            request.setStatus(ParticipationRequestStatus.CONFIRMED);
+        } else {
+            request.setStatus(ParticipationRequestStatus.PENDING);
         }
         return ParticipationRequestMapper.toDto(eventRequestRepository.save(request));
     }

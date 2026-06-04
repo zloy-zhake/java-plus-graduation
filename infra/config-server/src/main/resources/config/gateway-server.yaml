@@ -5,11 +5,11 @@ spring:
         - id: request-service-events
           uri: lb://request-service
           predicates:
-            - Path=/users/*/events/*/requests/**
+            - Path=/users/*/events/*/requests, /users/*/events/*/requests/**
         - id: request-service-users
           uri: lb://request-service
           predicates:
-            - Path=/users/*/requests/**
+            - Path=/users/*/requests, /users/*/requests/**
         - id: user-service
           uri: lb://user-service
           predicates:

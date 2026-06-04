@@ -94,7 +94,8 @@ public class EventServiceImpl implements EventService {
         log.info("Получение события id={} пользователя id={}", eventId, userId);
         Event event = eventRepository.findByIdAndInitiatorId(eventId, userId)
                 .orElseThrow(() -> new NotFoundException("Событие с id=" + eventId + " не найдено или недоступно"));
-        return EventMapper.toFullDto(event, getInitiator(event.getInitiatorId()), 0L, 0L);
+        long confirmed = getConfirmedRequests(List.of(event)).getOrDefault(event.getId(), 0L);
+        return EventMapper.toFullDto(event, getInitiator(event.getInitiatorId()), confirmed, 0L);
     }
 
     @Override
