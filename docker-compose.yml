@@ -108,6 +108,19 @@ services:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
 
+  compilation-service:
+    build: ./core/compilation-service
+    container_name: compilation-service
+    depends_on:
+      main-db:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+
   ewm-service:
     build: ./core/main-service
     container_name: main-service
