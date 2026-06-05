@@ -1,1 +1,5 @@
--- categories, events, admin_locations и функция distance() перенесены в event-service/schema.sql
+-- Все таблицы перенесены в соответствующие микросервисы:
+-- users               → user-service/schema.sql
+-- categories, events, admin_locations, distance() → event-service/schema.sql
+-- participation_requests → request-service/schema.sql
+-- compilations, compilation_events → compilation-service/schema.sql
