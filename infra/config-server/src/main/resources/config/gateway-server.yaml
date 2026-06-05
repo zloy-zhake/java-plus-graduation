@@ -38,10 +38,6 @@ spring:
           uri: lb://compilation-service
           predicates:
             - Path=/compilations, /compilations/**, /admin/compilations, /admin/compilations/**
-        - id: ewm-service
-          uri: lb://main-service
-          predicates:
-            - Path=/**
     loadbalancer:
       cache:
         enabled: false
