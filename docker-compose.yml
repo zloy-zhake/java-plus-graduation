@@ -44,6 +44,8 @@ services:
   stats-server:
     build: ./stats/stats-server
     container_name: stat-server
+    ports:
+      - "9090:9090"
     depends_on:
       stat-db:
         condition: service_healthy
