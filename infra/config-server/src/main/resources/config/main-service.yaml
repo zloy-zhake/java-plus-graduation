@@ -6,8 +6,7 @@ spring:
     driver-class-name: org.postgresql.Driver
   sql:
     init:
-      mode: always
-      continue-on-error: true
+      mode: never
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
