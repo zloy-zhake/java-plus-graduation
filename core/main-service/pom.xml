@@ -28,6 +28,7 @@
             <groupId>ru.practicum</groupId>
             <artifactId>user-service</artifactId>
             <version>0.0.1-SNAPSHOT</version>
+            <classifier>thin</classifier>
             <scope>test</scope>
         </dependency>
 
@@ -65,6 +66,7 @@
             <groupId>ru.practicum</groupId>
             <artifactId>event-service</artifactId>
             <version>0.0.1-SNAPSHOT</version>
+            <classifier>thin</classifier>
             <scope>test</scope>
         </dependency>
 
@@ -72,6 +74,7 @@
             <groupId>ru.practicum</groupId>
             <artifactId>request-service</artifactId>
             <version>0.0.1-SNAPSHOT</version>
+            <classifier>thin</classifier>
             <scope>test</scope>
         </dependency>
 
@@ -79,13 +82,7 @@
             <groupId>ru.practicum</groupId>
             <artifactId>compilation-service</artifactId>
             <version>0.0.1-SNAPSHOT</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>ru.practicum</groupId>
-            <artifactId>user-service</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
+            <classifier>thin</classifier>
             <scope>test</scope>
         </dependency>
 
