@@ -13,7 +13,7 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
-
-feign:
-  circuitbreaker:
-    enabled: true
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true
