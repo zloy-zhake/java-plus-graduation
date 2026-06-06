@@ -20,6 +20,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -96,8 +98,20 @@ public class CompilationServiceImpl implements CompilationService {
             compilations = compilationRepository.findAll(pageable).getContent();
         }
 
+        Set<Long> allEventIds = compilations.stream()
+                .flatMap(c -> c.getEventIds().stream())
+                .collect(Collectors.toSet());
+        Map<Long, EventShortDto> eventsById = fetchEvents(allEventIds).stream()
+                .collect(Collectors.toMap(EventShortDto::getId, e -> e));
+
         return compilations.stream()
-                .map(c -> CompilationMapper.toDto(c, fetchEvents(c.getEventIds())))
+                .map(c -> {
+                    List<EventShortDto> events = c.getEventIds().stream()
+                            .map(eventsById::get)
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toList());
+                    return CompilationMapper.toDto(c, events);
+                })
                 .collect(Collectors.toList());
     }
 
