@@ -6,8 +6,7 @@ spring:
     driver-class-name: org.postgresql.Driver
   sql:
     init:
-      mode: always
-      continue-on-error: true
+      mode: never
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
@@ -19,3 +18,7 @@ stats-service:
   retry:
     max-attempts: 3
     back-off-period: 3000
+
+feign:
+  circuitbreaker:
+    enabled: true
