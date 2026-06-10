@@ -1,3 +1,0 @@
-spring:
-  datasource:
-    url: jdbc:postgresql://stat-db:5432/ewm_stats_db
