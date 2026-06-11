@@ -7,7 +7,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.explorewithme.service.category.dal.CategoryRepository;
@@ -26,14 +25,10 @@ import ru.practicum.explorewithme.service.exception.ConflictException;
 import ru.practicum.explorewithme.service.exception.NotFoundException;
 import ru.practicum.explorewithme.service.location.dal.LocationRepository;
 import ru.practicum.explorewithme.service.user.dto.UserShortDto;
-import ru.practicum.explorewithme.stats.client.StatsClient;
-import ru.practicum.explorewithme.stats.dto.ViewStatsDTO;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -47,7 +42,6 @@ public class EventServiceImpl implements EventService {
     private final EventRepository eventRepository;
     private final UserClient userClient;
     private final CategoryRepository categoryRepository;
-    private final StatsClient statsClient;
     private final LocationRepository locationRepository;
     private final RequestClient requestClient;
 
@@ -71,7 +65,7 @@ public class EventServiceImpl implements EventService {
         event.setState(EventState.PENDING);
         event = eventRepository.save(event);
         log.debug("Событие сохранено с id={}", event.getId());
-        return EventMapper.toFullDto(event, user, 0L, 0L);
+        return EventMapper.toFullDto(event, user, 0L, 0.0);
     }
 
     @Override
@@ -85,7 +79,7 @@ public class EventServiceImpl implements EventService {
         return events.stream()
                 .map(e -> EventMapper.toShortDto(e,
                         userMap.getOrDefault(e.getInitiatorId(), new UserShortDto(e.getInitiatorId(), "N/A")),
-                        confirmedRequests.getOrDefault(e.getId(), 0L), 0L))
+                        confirmedRequests.getOrDefault(e.getId(), 0L), 0.0))
                 .collect(Collectors.toList());
     }
 
@@ -95,7 +89,7 @@ public class EventServiceImpl implements EventService {
         Event event = eventRepository.findByIdAndInitiatorId(eventId, userId)
                 .orElseThrow(() -> new NotFoundException("Событие с id=" + eventId + " не найдено или недоступно"));
         long confirmed = getConfirmedRequests(List.of(event)).getOrDefault(event.getId(), 0L);
-        return EventMapper.toFullDto(event, getInitiator(event.getInitiatorId()), confirmed, 0L);
+        return EventMapper.toFullDto(event, getInitiator(event.getInitiatorId()), confirmed, 0.0);
     }
 
     @Override
@@ -132,7 +126,7 @@ public class EventServiceImpl implements EventService {
         EventMapper.updateEntityFromRequest(request, event);
         eventRepository.save(event);
         log.debug("Событие обновлено");
-        return EventMapper.toFullDto(event, getInitiator(event.getInitiatorId()), 0L, 0L);
+        return EventMapper.toFullDto(event, getInitiator(event.getInitiatorId()), 0L, 0.0);
     }
 
     @Override
@@ -152,7 +146,7 @@ public class EventServiceImpl implements EventService {
         return events.stream()
                 .map(e -> EventMapper.toFullDto(e,
                         userMap.getOrDefault(e.getInitiatorId(), new UserShortDto(e.getInitiatorId(), "N/A")),
-                        confirmedRequests.getOrDefault(e.getId(), 0L), 0L))
+                        confirmedRequests.getOrDefault(e.getId(), 0L), 0.0))
                 .collect(Collectors.toList());
     }
 
@@ -197,7 +191,7 @@ public class EventServiceImpl implements EventService {
         EventMapper.updateEntityFromAdminRequest(request, event);
         eventRepository.save(event);
         log.debug("Событие обновлено администратором");
-        return EventMapper.toFullDto(event, getInitiator(event.getInitiatorId()), 0L, 0L);
+        return EventMapper.toFullDto(event, getInitiator(event.getInitiatorId()), 0L, 0.0);
     }
 
     @Override
@@ -215,39 +209,12 @@ public class EventServiceImpl implements EventService {
         List<Event> events = page.getContent();
         Map<Long, UserShortDto> userMap = getUserMap(events);
         Map<Long, Long> confirmedRequests = getConfirmedRequests(events);
-        Map<Long, Long> views = getViewsMap(events);
 
         return events.stream()
                 .map(e -> EventMapper.toFullDto(e,
                         userMap.getOrDefault(e.getInitiatorId(), new UserShortDto(e.getInitiatorId(), "N/A")),
-                        confirmedRequests.getOrDefault(e.getId(), 0L),
-                        views.getOrDefault(e.getId(), 0L)))
+                        confirmedRequests.getOrDefault(e.getId(), 0L), 0.0))
                 .collect(Collectors.toList());
-    }
-
-    private Map<Long, Long> getViewsMap(List<Event> events) {
-        if (events.isEmpty()) return Collections.emptyMap();
-
-        List<String> uris = events.stream()
-                .map(e -> "/events/" + e.getId())
-                .collect(Collectors.toList());
-
-        LocalDateTime start = events.stream()
-                .map(Event::getCreatedOn)
-                .min(LocalDateTime::compareTo)
-                .orElse(LocalDateTime.now().minusYears(10));
-
-        Map<Long, Long> viewsMap = new HashMap<>();
-        try {
-            ResponseEntity<List<ViewStatsDTO>> response = statsClient.getStats(start, LocalDateTime.now(), uris, true);
-            List<ViewStatsDTO> stats = response.getBody();
-            if (stats != null && !stats.isEmpty()) {
-                viewsMap.put(events.getFirst().getId(), stats.getFirst().getHits());
-            }
-        } catch (Exception e) {
-            log.error("Ошибка при получении статистики для событий: {}", e.getMessage());
-        }
-        return viewsMap;
     }
 
     private Map<Long, Long> getConfirmedRequests(List<Event> events) {
@@ -269,7 +236,7 @@ public class EventServiceImpl implements EventService {
         List<EventShortDto> list = page.stream()
                 .map(e -> EventMapper.toShortDto(e,
                         userMap.getOrDefault(e.getInitiatorId(), new UserShortDto(e.getInitiatorId(), "N/A")),
-                        0L, 0L))
+                        0L, 0.0))
                 .toList();
         log.info("Список событий после фильтрации {}", list);
         return list;
@@ -287,31 +254,13 @@ public class EventServiceImpl implements EventService {
         Event e = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Событие " + eventId + " не найдено"));
 
-        EventFullDto event = EventMapper.toFullDto(e, getInitiator(e.getInitiatorId()), 0L, 0L);
+        EventFullDto event = EventMapper.toFullDto(e, getInitiator(e.getInitiatorId()), 0L, 0.0);
 
         if (event.getState() != EventState.PUBLISHED) {
             throw new NotFoundException("Событие должно быть опубликовано");
         }
 
-        long views = getViews(eventId, event);
-        event.setViews(views);
-        event.setConfirmedRequests(0L);
         return event;
-    }
-
-    private Long getViews(Long eventId, EventFullDto event) {
-        final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        LocalDateTime dateTime = LocalDateTime.parse(event.getCreatedOn(), formatter);
-        long views = 0;
-        try {
-            ResponseEntity<List<ViewStatsDTO>> response = statsClient.getStats(
-                    dateTime, LocalDateTime.now(), List.of("/events/" + eventId), true);
-            List<ViewStatsDTO> stats = response.getBody();
-            views = (stats == null) ? 0 : stats.getFirst().getHits();
-        } catch (Exception ex) {
-            log.error("Ошибка при получении статистики для события {}: {}", eventId, ex.getMessage());
-        }
-        return views;
     }
 
     private UserShortDto getInitiator(Long initiatorId) {
