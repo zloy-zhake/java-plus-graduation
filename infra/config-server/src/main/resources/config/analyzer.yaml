@@ -6,6 +6,7 @@ spring:
     consumer:
       group-id: analyzer
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: ru.practicum.ewm.stats.avro.UserActionAvroDeserializer
   datasource:
     url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/ewm_analyzer_db
     username: ${POSTGRES_USER:postgres}

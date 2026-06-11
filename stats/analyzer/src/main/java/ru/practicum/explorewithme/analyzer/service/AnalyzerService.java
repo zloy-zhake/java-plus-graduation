@@ -16,9 +16,7 @@ public class AnalyzerService {
     private final UserActionRepository userActionRepository;
     private final EventSimilarityRepository eventSimilarityRepository;
 
-    @KafkaListener(topics = "stats.user-actions.v1",
-            containerFactory = "userActionListenerContainerFactory",
-            groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = "stats.user-actions.v1")
     public void handleUserAction(UserActionAvro action) {
         double weight = getWeight(action.getActionType());
         userActionRepository.upsertUserAction(
