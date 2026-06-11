@@ -102,7 +102,6 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
                     <mainClass>ru.practicum.explorewithme.service.event.app.EventServiceApp</mainClass>
-                    <classifier>exec</classifier>
                 </configuration>
             </plugin>
             <plugin>
