@@ -15,7 +15,6 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>stats-dto</module>
         <module>stats-avro</module>
         <module>stats-proto</module>
         <module>stats-client</module>

@@ -6,6 +6,8 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.ewm.stats.proto.collector.ActionTypeProto;
+import ru.practicum.explorewithme.service.event.client.ParticipationRequestDto;
+import ru.practicum.explorewithme.service.event.client.RequestClient;
 import ru.practicum.explorewithme.service.event.dto.EventFullDto;
 import ru.practicum.explorewithme.service.event.dto.EventSearchParams;
 import ru.practicum.explorewithme.service.event.dto.EventShortDto;
@@ -15,6 +17,7 @@ import ru.practicum.explorewithme.stats.client.CollectorClient;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 
 @RestController
@@ -24,6 +27,7 @@ import java.util.List;
 public class EventPublicController {
     private final EventService eventService;
     private final CollectorClient collectorClient;
+    private final RequestClient requestClient;
 
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
@@ -66,5 +70,35 @@ public class EventPublicController {
         }
 
         return eventService.getEventPublic(eventId);
+    }
+
+    @GetMapping("/recommendations")
+    @ResponseStatus(HttpStatus.OK)
+    public List<EventShortDto> getRecommendations(@RequestHeader(value = "X-EWM-USER-ID", required = false, defaultValue = "0") long userId) {
+        if (userId == 0) return Collections.emptyList();
+        return eventService.getRecommendedEvents(userId);
+    }
+
+    @GetMapping("/{eventId}/similar")
+    @ResponseStatus(HttpStatus.OK)
+    public List<EventShortDto> getSimilarEvents(@PathVariable Long eventId,
+                                                @RequestHeader(value = "X-EWM-USER-ID", required = false, defaultValue = "0") long userId,
+                                                @RequestParam(defaultValue = "10") int maxResults) {
+        return eventService.getSimilarEvents(eventId, userId, maxResults);
+    }
+
+    @PutMapping("/{eventId}/like")
+    @ResponseStatus(HttpStatus.OK)
+    public void likeEvent(@PathVariable Long eventId,
+                          @RequestHeader(value = "X-EWM-USER-ID", required = true) long userId) {
+        List<ParticipationRequestDto> userRequests = requestClient.getUserRequests(userId);
+        boolean hasConfirmed = userRequests.stream()
+                .anyMatch(r -> r.getEvent().equals(eventId) && "CONFIRMED".equals(r.getStatus()));
+
+        if (!hasConfirmed) {
+            throw new BadRequestException("У пользователя нет подтверждённой заявки на событие " + eventId);
+        }
+
+        collectorClient.collectUserAction(userId, eventId, ActionTypeProto.ACTION_LIKE, Instant.now());
     }
 }

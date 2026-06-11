@@ -3,6 +3,7 @@ package ru.practicum.explorewithme.service.event.service;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -47,6 +48,9 @@ public class EventServiceImpl implements EventService {
     private final LocationRepository locationRepository;
     private final RequestClient requestClient;
     private final AnalyzerClient analyzerClient;
+
+    @Value("${recommendations.max-results}")
+    private int maxResults;
 
     @Override
     @Transactional
@@ -295,6 +299,74 @@ public class EventServiceImpl implements EventService {
         event.setConfirmedRequests(0L);
 
         return event;
+    }
+
+    @Override
+    public List<EventShortDto> getRecommendedEvents(long userId) {
+        if (userId == 0) return Collections.emptyList();
+
+        try {
+            List<Long> eventIds = analyzerClient.getRecommendations(userId, maxResults)
+                    .map(ru.practicum.ewm.stats.proto.dashboard.RecommendedEventProto::getEventId)
+                    .toList();
+
+            if (eventIds.isEmpty()) return Collections.emptyList();
+
+            List<Event> events = eventRepository.findAllById(eventIds).stream()
+                    .filter(e -> e.getState() == EventState.PUBLISHED)
+                    .toList();
+
+            if (events.isEmpty()) return Collections.emptyList();
+
+            Map<Long, UserShortDto> userMap = getUserMap(events);
+            Map<Long, Integer> order = new java.util.HashMap<>();
+            for (int i = 0; i < eventIds.size(); i++) {
+                order.put(eventIds.get(i), i);
+            }
+
+            return events.stream()
+                    .sorted(Comparator.comparingInt(e -> order.getOrDefault(e.getId(), Integer.MAX_VALUE)))
+                    .map(e -> EventMapper.toShortDto(e,
+                            userMap.getOrDefault(e.getInitiatorId(), new UserShortDto(e.getInitiatorId(), "N/A")),
+                            0L, 0.0))
+                    .toList();
+        } catch (Exception e) {
+            log.error("Ошибка при получении рекомендаций для user {}: {}", userId, e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    @Override
+    public List<EventShortDto> getSimilarEvents(long eventId, long userId, int maxResults) {
+        try {
+            List<Long> eventIds = analyzerClient.getSimilarEvents(eventId, userId, maxResults)
+                    .map(ru.practicum.ewm.stats.proto.dashboard.RecommendedEventProto::getEventId)
+                    .toList();
+
+            if (eventIds.isEmpty()) return Collections.emptyList();
+
+            List<Event> events = eventRepository.findAllById(eventIds).stream()
+                    .filter(e -> e.getState() == EventState.PUBLISHED)
+                    .toList();
+
+            if (events.isEmpty()) return Collections.emptyList();
+
+            Map<Long, UserShortDto> userMap = getUserMap(events);
+            Map<Long, Integer> order = new java.util.HashMap<>();
+            for (int i = 0; i < eventIds.size(); i++) {
+                order.put(eventIds.get(i), i);
+            }
+
+            return events.stream()
+                    .sorted(Comparator.comparingInt(e -> order.getOrDefault(e.getId(), Integer.MAX_VALUE)))
+                    .map(e -> EventMapper.toShortDto(e,
+                            userMap.getOrDefault(e.getInitiatorId(), new UserShortDto(e.getInitiatorId(), "N/A")),
+                            0L, 0.0))
+                    .toList();
+        } catch (Exception e) {
+            log.error("Ошибка при получении похожих событий для event {}: {}", eventId, e.getMessage());
+            return Collections.emptyList();
+        }
     }
 
     private UserShortDto getInitiator(Long initiatorId) {
