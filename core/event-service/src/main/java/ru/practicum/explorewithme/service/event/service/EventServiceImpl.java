@@ -262,11 +262,12 @@ public class EventServiceImpl implements EventService {
         List<Event> events = page.getContent();
         List<Long> eventIds = events.stream().map(Event::getId).collect(Collectors.toList());
         Map<Long, Double> ratings = getRatingsMap(eventIds);
+        Map<Long, Long> confirmedRequests = getConfirmedRequests(events);
 
         List<EventShortDto> list = events.stream()
                 .map(e -> EventMapper.toShortDto(e,
                         userMap.getOrDefault(e.getInitiatorId(), new UserShortDto(e.getInitiatorId(), "N/A")),
-                        0L, ratings.getOrDefault(e.getId(), 0.0)))
+                        confirmedRequests.getOrDefault(e.getId(), 0L), ratings.getOrDefault(e.getId(), 0.0)))
                 .toList();
 
         if ("VIEWS".equalsIgnoreCase(params.getSort())) {
@@ -296,7 +297,7 @@ public class EventServiceImpl implements EventService {
 
         Map<Long, Double> ratings = getRatingsMap(List.of(eventId));
         event.setRating(ratings.getOrDefault(eventId, 0.0));
-        event.setConfirmedRequests(0L);
+        event.setConfirmedRequests(getConfirmedRequests(List.of(e)).getOrDefault(eventId, 0L));
 
         return event;
     }
