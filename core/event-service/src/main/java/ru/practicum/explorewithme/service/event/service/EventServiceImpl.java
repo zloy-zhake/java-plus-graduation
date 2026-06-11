@@ -25,10 +25,12 @@ import ru.practicum.explorewithme.service.exception.ConflictException;
 import ru.practicum.explorewithme.service.exception.NotFoundException;
 import ru.practicum.explorewithme.service.location.dal.LocationRepository;
 import ru.practicum.explorewithme.service.user.dto.UserShortDto;
+import ru.practicum.explorewithme.stats.client.AnalyzerClient;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -44,6 +46,7 @@ public class EventServiceImpl implements EventService {
     private final CategoryRepository categoryRepository;
     private final LocationRepository locationRepository;
     private final RequestClient requestClient;
+    private final AnalyzerClient analyzerClient;
 
     @Override
     @Transactional
@@ -209,12 +212,27 @@ public class EventServiceImpl implements EventService {
         List<Event> events = page.getContent();
         Map<Long, UserShortDto> userMap = getUserMap(events);
         Map<Long, Long> confirmedRequests = getConfirmedRequests(events);
+        Map<Long, Double> ratings = getRatingsMap(events.stream().map(Event::getId).collect(Collectors.toList()));
 
         return events.stream()
                 .map(e -> EventMapper.toFullDto(e,
                         userMap.getOrDefault(e.getInitiatorId(), new UserShortDto(e.getInitiatorId(), "N/A")),
-                        confirmedRequests.getOrDefault(e.getId(), 0L), 0.0))
+                        confirmedRequests.getOrDefault(e.getId(), 0L),
+                        ratings.getOrDefault(e.getId(), 0.0)))
                 .collect(Collectors.toList());
+    }
+
+    private Map<Long, Double> getRatingsMap(List<Long> eventIds) {
+        if (eventIds.isEmpty()) return Collections.emptyMap();
+        try {
+            return analyzerClient.getInteractionsCount(eventIds)
+                    .collect(Collectors.toMap(
+                            ru.practicum.ewm.stats.proto.dashboard.RecommendedEventProto::getEventId,
+                            e -> (double) e.getScore()));
+        } catch (Exception e) {
+            log.error("Ошибка при получении рейтингов из Analyzer: {}", e.getMessage());
+            return Collections.emptyMap();
+        }
     }
 
     private Map<Long, Long> getConfirmedRequests(List<Event> events) {
@@ -233,19 +251,31 @@ public class EventServiceImpl implements EventService {
         Page<Event> page = eventRepository.findAll(predicate, pageable);
         Map<Long, UserShortDto> userMap = getUserMap(page.getContent());
 
-        List<EventShortDto> list = page.stream()
+        if (page.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Event> events = page.getContent();
+        List<Long> eventIds = events.stream().map(Event::getId).collect(Collectors.toList());
+        Map<Long, Double> ratings = getRatingsMap(eventIds);
+
+        List<EventShortDto> list = events.stream()
                 .map(e -> EventMapper.toShortDto(e,
                         userMap.getOrDefault(e.getInitiatorId(), new UserShortDto(e.getInitiatorId(), "N/A")),
-                        0L, 0.0))
+                        0L, ratings.getOrDefault(e.getId(), 0.0)))
                 .toList();
+
+        if ("VIEWS".equalsIgnoreCase(params.getSort())) {
+            list = list.stream()
+                    .sorted(Comparator.comparingDouble(EventShortDto::getRating).reversed())
+                    .toList();
+        }
+
         log.info("Список событий после фильтрации {}", list);
         return list;
     }
 
     private Sort getSort(String sort) {
-        if ("VIEWS".equalsIgnoreCase(sort)) {
-            return Sort.by(Sort.Direction.DESC, "views");
-        }
         return Sort.by(Sort.Direction.ASC, "eventDate");
     }
 
@@ -259,6 +289,10 @@ public class EventServiceImpl implements EventService {
         if (event.getState() != EventState.PUBLISHED) {
             throw new NotFoundException("Событие должно быть опубликовано");
         }
+
+        Map<Long, Double> ratings = getRatingsMap(List.of(eventId));
+        event.setRating(ratings.getOrDefault(eventId, 0.0));
+        event.setConfirmedRequests(0L);
 
         return event;
     }

@@ -5,12 +5,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import ru.practicum.ewm.stats.proto.collector.ActionTypeProto;
 import ru.practicum.explorewithme.service.event.dto.EventFullDto;
 import ru.practicum.explorewithme.service.event.dto.EventSearchParams;
 import ru.practicum.explorewithme.service.event.dto.EventShortDto;
 import ru.practicum.explorewithme.service.event.service.EventService;
 import ru.practicum.explorewithme.service.exception.BadRequestException;
+import ru.practicum.explorewithme.stats.client.CollectorClient;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -20,6 +23,7 @@ import java.util.List;
 @Slf4j
 public class EventPublicController {
     private final EventService eventService;
+    private final CollectorClient collectorClient;
 
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
@@ -53,8 +57,14 @@ public class EventPublicController {
 
     @GetMapping("/{eventId}")
     @ResponseStatus(HttpStatus.OK)
-    public EventFullDto getEventByIdAndPublished(@PathVariable(name = "eventId") Long eventId) {
+    public EventFullDto getEventByIdAndPublished(@PathVariable(name = "eventId") Long eventId,
+                                                 @RequestHeader(value = "X-EWM-USER-ID", required = false, defaultValue = "0") long userId) {
         log.info("Запрос на получение события {}", eventId);
+
+        if (userId != 0) {
+            collectorClient.collectUserAction(userId, eventId, ActionTypeProto.ACTION_VIEW, Instant.now());
+        }
+
         return eventService.getEventPublic(eventId);
     }
 }
