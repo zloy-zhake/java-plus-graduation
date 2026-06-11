@@ -34,7 +34,7 @@ public class CollectorClient {
                     .setTimestamp(protoTimestamp)
                     .build();
 
-            Empty response = stub.withDeadlineAfter(1, TimeUnit.SECONDS)
+            Empty response = stub.withDeadlineAfter(10, TimeUnit.SECONDS)
                     .collectUserAction(request);
 
             log.debug("CollectorClient: действие {} пользователя {} для события {} отправлено",
