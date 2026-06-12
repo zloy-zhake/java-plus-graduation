@@ -232,7 +232,7 @@ public class EventServiceImpl implements EventService {
             return analyzerClient.getInteractionsCount(eventIds)
                     .collect(Collectors.toMap(
                             ru.practicum.ewm.stats.proto.dashboard.RecommendedEventProto::getEventId,
-                            e -> (double) e.getScore()));
+                            e -> e.getScore()));
         } catch (Exception e) {
             log.error("Ошибка при получении рейтингов из Analyzer: {}", e.getMessage());
             return Collections.emptyMap();

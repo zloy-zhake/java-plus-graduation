@@ -22,7 +22,7 @@ message InteractionsCountRequestProto {
 
 message RecommendedEventProto {
     int64 event_id = 1;
-    float score = 2;
+    double score = 2;
 }
 
 service RecommendationsController {

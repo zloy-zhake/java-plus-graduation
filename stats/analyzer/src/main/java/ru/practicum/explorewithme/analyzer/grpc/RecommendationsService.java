@@ -66,7 +66,7 @@ public class RecommendationsService extends RecommendationsControllerGrpc.Recomm
                     eventId, eventId.getClass().getSimpleName(), contains, score, (float) score);
             responseObserver.onNext(RecommendedEventProto.newBuilder()
                     .setEventId(eventId)
-                    .setScore((float) score)
+                    .setScore(score)
                     .build());
         }
         responseObserver.onCompleted();
@@ -93,7 +93,7 @@ public class RecommendationsService extends RecommendationsControllerGrpc.Recomm
                 .limit(maxResults)
                 .forEach(e -> responseObserver.onNext(RecommendedEventProto.newBuilder()
                         .setEventId(e.getKey())
-                        .setScore(e.getValue().floatValue())
+                        .setScore(e.getValue())
                         .build()));
         log.debug("getSimilarEvents: completed for eventId={}", eventId);
         responseObserver.onCompleted();
@@ -173,7 +173,7 @@ public class RecommendationsService extends RecommendationsControllerGrpc.Recomm
 
             results.add(RecommendedEventProto.newBuilder()
                     .setEventId(candidateId)
-                    .setScore((float) (numerator / denominator))
+                    .setScore(numerator / denominator)
                     .build());
         }
 
