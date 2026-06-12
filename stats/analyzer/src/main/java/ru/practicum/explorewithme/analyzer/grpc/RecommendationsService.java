@@ -2,6 +2,7 @@ package ru.practicum.explorewithme.analyzer.grpc;
 
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.service.GrpcService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
@@ -25,6 +26,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 @GrpcService
 @RequiredArgsConstructor
 public class RecommendationsService extends RecommendationsControllerGrpc.RecommendationsControllerImplBase {
@@ -42,7 +44,13 @@ public class RecommendationsService extends RecommendationsControllerGrpc.Recomm
     public void getInteractionsCount(InteractionsCountRequestProto request,
                                      StreamObserver<RecommendedEventProto> responseObserver) {
         List<Long> eventIds = request.getEventIdList();
-        Map<Long, Double> scoresMap = userActionRepository.findInteractionScores(eventIds).stream()
+        log.debug("getInteractionsCount: eventIds={}", eventIds);
+        List<EventScore> scores = userActionRepository.findInteractionScores(eventIds);
+        log.debug("getInteractionsCount: findInteractionScores returned {} rows", scores.size());
+        for (EventScore s : scores) {
+            log.debug("  row: eventId={} score={}", s.getEventId(), s.getScore());
+        }
+        Map<Long, Double> scoresMap = scores.stream()
                 .collect(Collectors.toMap(EventScore::getEventId, EventScore::getScore));
 
         for (Long eventId : eventIds) {
