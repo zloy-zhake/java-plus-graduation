@@ -27,8 +27,7 @@ public class AnalyzerService {
     }
 
     @KafkaListener(topics = "stats.events-similarity.v1",
-            containerFactory = "eventSimilarityListenerContainerFactory",
-            groupId = "${spring.kafka.consumer.group-id}")
+            containerFactory = "eventSimilarityListenerContainerFactory")
     public void handleEventSimilarity(EventSimilarityAvro similarity) {
         eventSimilarityRepository.upsertEventSimilarity(
                 similarity.getEventA(),
