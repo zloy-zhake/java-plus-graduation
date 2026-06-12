@@ -22,23 +22,36 @@ public class AnalyzerService {
     public void handleUserAction(UserActionAvro action) {
         log.info("Processing user action: userId={}, eventId={}, type={}",
                 action.getUserId(), action.getEventId(), action.getActionType());
-        double weight = getWeight(action.getActionType());
-        userActionRepository.upsertUserAction(
-                action.getUserId(),
-                action.getEventId(),
-                weight,
-                action.getTimestamp());
-        log.info("Saved user action: userId={}, eventId={}, weight={}",
-                action.getUserId(), action.getEventId(), weight);
+        try {
+            double weight = getWeight(action.getActionType());
+            userActionRepository.upsertUserAction(
+                    action.getUserId(),
+                    action.getEventId(),
+                    weight,
+                    action.getTimestamp());
+            log.info("Saved user action: userId={}, eventId={}, weight={}",
+                    action.getUserId(), action.getEventId(), weight);
+        } catch (Exception e) {
+            log.error("Failed to save user action: userId={}, eventId={}, error={}",
+                    action.getUserId(), action.getEventId(), e.getMessage(), e);
+        }
     }
 
     @KafkaListener(topics = "stats.events-similarity.v1",
             containerFactory = "eventSimilarityListenerContainerFactory")
     public void handleEventSimilarity(EventSimilarityAvro similarity) {
-        eventSimilarityRepository.upsertEventSimilarity(
-                similarity.getEventA(),
-                similarity.getEventB(),
-                similarity.getScore());
+        log.info("Processing similarity: eventA={} eventB={} score={}",
+                similarity.getEventA(), similarity.getEventB(), similarity.getScore());
+        try {
+            eventSimilarityRepository.upsertEventSimilarity(
+                    similarity.getEventA(),
+                    similarity.getEventB(),
+                    similarity.getScore());
+            log.info("Saved similarity: eventA={} eventB={}", similarity.getEventA(), similarity.getEventB());
+        } catch (Exception e) {
+            log.error("Failed to save similarity: eventA={} eventB={} error={}",
+                    similarity.getEventA(), similarity.getEventB(), e.getMessage(), e);
+        }
     }
 
     private double getWeight(ActionTypeAvro actionType) {

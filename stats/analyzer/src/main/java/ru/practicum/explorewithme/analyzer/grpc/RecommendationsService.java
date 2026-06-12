@@ -48,15 +48,25 @@ public class RecommendationsService extends RecommendationsControllerGrpc.Recomm
         List<EventScore> scores = userActionRepository.findInteractionScores(eventIds);
         log.debug("getInteractionsCount: findInteractionScores returned {} rows", scores.size());
         for (EventScore s : scores) {
-            log.debug("  row: eventId={} score={}", s.getEventId(), s.getScore());
+            Long eid = s.getEventId();
+            Double sc = s.getScore();
+            log.debug("  row: eventId={} (type={}) score={} (type={})",
+                    eid, eid == null ? "null" : eid.getClass().getSimpleName(),
+                    sc, sc == null ? "null" : sc.getClass().getSimpleName());
         }
         Map<Long, Double> scoresMap = scores.stream()
                 .collect(Collectors.toMap(EventScore::getEventId, EventScore::getScore));
 
+        log.debug("getInteractionsCount: scoresMap={}, mapKeyType={}", scoresMap,
+                scoresMap.isEmpty() ? "empty" : scoresMap.keySet().iterator().next().getClass().getSimpleName());
         for (Long eventId : eventIds) {
+            boolean contains = scoresMap.containsKey(eventId);
+            double score = scoresMap.getOrDefault(eventId, 0.0);
+            log.debug("getInteractionsCount: eventId={} (type={}) containsKey={} score={} floatScore={}",
+                    eventId, eventId.getClass().getSimpleName(), contains, score, (float) score);
             responseObserver.onNext(RecommendedEventProto.newBuilder()
                     .setEventId(eventId)
-                    .setScore(scoresMap.getOrDefault(eventId, 0.0).floatValue())
+                    .setScore((float) score)
                     .build());
         }
         responseObserver.onCompleted();
@@ -68,10 +78,15 @@ public class RecommendationsService extends RecommendationsControllerGrpc.Recomm
         long eventId = request.getEventId();
         long userId = request.getUserId();
         int maxResults = request.getMaxResults();
+        log.debug("getSimilarEvents: eventId={} userId={} maxResults={}", eventId, userId, maxResults);
 
         Set<Long> userEvents = getUserEventIds(userId);
+        log.debug("getSimilarEvents: user {} has {} known events", userId, userEvents.size());
 
-        eventSimilarityRepository.findByEventId(eventId).stream()
+        List<EventSimilarity> sims = eventSimilarityRepository.findByEventId(eventId);
+        log.debug("getSimilarEvents: found {} similarities for event {}", sims.size(), eventId);
+
+        sims.stream()
                 .map(sim -> Map.entry(getOtherEventId(sim, eventId), sim.getScore()))
                 .filter(e -> !userEvents.contains(e.getKey()))
                 .sorted(Map.Entry.<Long, Double>comparingByValue().reversed())
@@ -80,6 +95,7 @@ public class RecommendationsService extends RecommendationsControllerGrpc.Recomm
                         .setEventId(e.getKey())
                         .setScore(e.getValue().floatValue())
                         .build()));
+        log.debug("getSimilarEvents: completed for eventId={}", eventId);
         responseObserver.onCompleted();
     }
 
@@ -88,12 +104,15 @@ public class RecommendationsService extends RecommendationsControllerGrpc.Recomm
                                           StreamObserver<RecommendedEventProto> responseObserver) {
         long userId = request.getUserId();
         int maxResults = request.getMaxResults();
+        log.debug("getRecommendationsForUser: userId={} maxResults={}", userId, maxResults);
 
         // 1а. Последние N взаимодействий пользователя
         List<UserAction> recentInteractions = userActionRepository
                 .findTopNByUser(userId, PageRequest.of(0, nInteractions));
+        log.debug("getRecommendationsForUser: recentInteractions={}", recentInteractions.size());
 
         if (recentInteractions.isEmpty()) {
+            log.debug("getRecommendationsForUser: no interactions for user {}, returning empty", userId);
             responseObserver.onCompleted();
             return;
         }
@@ -114,7 +133,9 @@ public class RecommendationsService extends RecommendationsControllerGrpc.Recomm
             }
         }
 
+        log.debug("getRecommendationsForUser: candidateScores={}", candidateScores.size());
         if (candidateScores.isEmpty()) {
+            log.debug("getRecommendationsForUser: no candidates for user {}, returning empty", userId);
             responseObserver.onCompleted();
             return;
         }
@@ -156,6 +177,7 @@ public class RecommendationsService extends RecommendationsControllerGrpc.Recomm
                     .build());
         }
 
+        log.debug("getRecommendationsForUser: computed {} results, sending top {}", results.size(), maxResults);
         results.stream()
                 .sorted(Comparator.comparingDouble(RecommendedEventProto::getScore).reversed())
                 .limit(maxResults)
