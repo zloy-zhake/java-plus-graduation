@@ -13,6 +13,7 @@ import ru.practicum.explorewithme.service.event.dto.EventSearchParams;
 import ru.practicum.explorewithme.service.event.dto.EventShortDto;
 import ru.practicum.explorewithme.service.event.service.EventService;
 import ru.practicum.explorewithme.service.exception.BadRequestException;
+import ru.practicum.explorewithme.service.util.EwmHttpHeaders;
 import ru.practicum.explorewithme.stats.client.CollectorClient;
 
 import java.time.Instant;
@@ -62,7 +63,7 @@ public class EventPublicController {
     @GetMapping("/{eventId}")
     @ResponseStatus(HttpStatus.OK)
     public EventFullDto getEventByIdAndPublished(@PathVariable(name = "eventId") Long eventId,
-                                                 @RequestHeader(value = "X-EWM-USER-ID", required = false, defaultValue = "0") long userId) {
+                                                 @RequestHeader(value = EwmHttpHeaders.USER_ID, required = false, defaultValue = "0") long userId) {
         log.info("Запрос на получение события {}", eventId);
 
         if (userId != 0) {
@@ -74,7 +75,7 @@ public class EventPublicController {
 
     @GetMapping("/recommendations")
     @ResponseStatus(HttpStatus.OK)
-    public List<EventShortDto> getRecommendations(@RequestHeader(value = "X-EWM-USER-ID", required = false, defaultValue = "0") long userId) {
+    public List<EventShortDto> getRecommendations(@RequestHeader(value = EwmHttpHeaders.USER_ID, required = false, defaultValue = "0") long userId) {
         if (userId == 0) return Collections.emptyList();
         return eventService.getRecommendedEvents(userId);
     }
@@ -82,7 +83,7 @@ public class EventPublicController {
     @GetMapping("/{eventId}/similar")
     @ResponseStatus(HttpStatus.OK)
     public List<EventShortDto> getSimilarEvents(@PathVariable Long eventId,
-                                                @RequestHeader(value = "X-EWM-USER-ID", required = false, defaultValue = "0") long userId,
+                                                @RequestHeader(value = EwmHttpHeaders.USER_ID, required = false, defaultValue = "0") long userId,
                                                 @RequestParam(defaultValue = "10") int maxResults) {
         return eventService.getSimilarEvents(eventId, userId, maxResults);
     }
@@ -90,7 +91,7 @@ public class EventPublicController {
     @PutMapping("/{eventId}/like")
     @ResponseStatus(HttpStatus.OK)
     public void likeEvent(@PathVariable Long eventId,
-                          @RequestHeader(value = "X-EWM-USER-ID", required = true) long userId) {
+                          @RequestHeader(value = EwmHttpHeaders.USER_ID, required = true) long userId) {
         List<ParticipationRequestDto> userRequests = requestClient.getUserRequests(userId);
         boolean hasConfirmed = userRequests.stream()
                 .anyMatch(r -> r.getEvent().equals(eventId) && "CONFIRMED".equals(r.getStatus()));
