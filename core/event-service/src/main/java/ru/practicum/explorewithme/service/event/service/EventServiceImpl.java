@@ -27,6 +27,7 @@ import ru.practicum.explorewithme.service.exception.NotFoundException;
 import ru.practicum.explorewithme.service.location.dal.LocationRepository;
 import ru.practicum.explorewithme.service.user.dto.UserShortDto;
 import ru.practicum.explorewithme.stats.client.AnalyzerClient;
+import ru.practicum.ewm.stats.proto.dashboard.RecommendedEventProto;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -231,7 +232,7 @@ public class EventServiceImpl implements EventService {
         try {
             return analyzerClient.getInteractionsCount(eventIds)
                     .collect(Collectors.toMap(
-                            ru.practicum.ewm.stats.proto.dashboard.RecommendedEventProto::getEventId,
+                            RecommendedEventProto::getEventId,
                             e -> e.getScore()));
         } catch (Exception e) {
             log.error("Ошибка при получении рейтингов из Analyzer: {}", e.getMessage());
@@ -308,7 +309,7 @@ public class EventServiceImpl implements EventService {
 
         try {
             List<Long> eventIds = analyzerClient.getRecommendations(userId, maxResults)
-                    .map(ru.practicum.ewm.stats.proto.dashboard.RecommendedEventProto::getEventId)
+                    .map(RecommendedEventProto::getEventId)
                     .toList();
 
             if (eventIds.isEmpty()) return Collections.emptyList();
@@ -341,7 +342,7 @@ public class EventServiceImpl implements EventService {
     public List<EventShortDto> getSimilarEvents(long eventId, long userId, int maxResults) {
         try {
             List<Long> eventIds = analyzerClient.getSimilarEvents(eventId, userId, maxResults)
-                    .map(ru.practicum.ewm.stats.proto.dashboard.RecommendedEventProto::getEventId)
+                    .map(RecommendedEventProto::getEventId)
                     .toList();
 
             if (eventIds.isEmpty()) return Collections.emptyList();
