@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.ewm.stats.proto.collector.ActionTypeProto;
 import ru.practicum.explorewithme.service.exception.ConflictException;
 import ru.practicum.explorewithme.service.exception.NotFoundException;
 import ru.practicum.explorewithme.service.request.client.EventClient;
@@ -19,6 +20,7 @@ import ru.practicum.explorewithme.service.request.mapper.ParticipationRequestMap
 import ru.practicum.explorewithme.service.request.model.ParticipationRequest;
 import ru.practicum.explorewithme.service.user.dto.UserShortDto;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -33,6 +35,7 @@ public class EventRequestServiceImpl implements EventRequestService {
     private final EventRequestRepository eventRequestRepository;
     private final UserClient userClient;
     private final EventClient eventClient;
+    private final ru.practicum.explorewithme.stats.client.CollectorClient collectorClient;
 
     @Override
     public List<ParticipationRequestDto> getEventRequests(Long userId, Long eventId) {
@@ -113,6 +116,8 @@ public class EventRequestServiceImpl implements EventRequestService {
             if (remaining > 0) {
                 r.setStatus(ParticipationRequestStatus.CONFIRMED);
                 confirmed.add(r);
+                collectorClient.collectUserAction(r.getRequesterId(), event.getId(),
+                        ActionTypeProto.ACTION_REGISTER, Instant.now());
                 remaining--;
             } else {
                 r.setStatus(ParticipationRequestStatus.REJECTED);
@@ -191,7 +196,13 @@ public class EventRequestServiceImpl implements EventRequestService {
         } else {
             request.setStatus(ParticipationRequestStatus.PENDING);
         }
-        return ParticipationRequestMapper.toDto(eventRequestRepository.save(request));
+        ParticipationRequestDto saved = ParticipationRequestMapper.toDto(eventRequestRepository.save(request));
+
+        if (saved.getStatus() == ParticipationRequestStatus.CONFIRMED) {
+            collectorClient.collectUserAction(userId, eventId, ActionTypeProto.ACTION_REGISTER, Instant.now());
+        }
+
+        return saved;
     }
 
     public List<ParticipationRequestDto> getUserEvents(Long userId) {
